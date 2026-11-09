@@ -75,7 +75,8 @@
 
   window.assetUrl = (a) => a;
 
-  /* Fast parallel write of one audio chunk through the Firestore REST API.
+  /* data: base64 string of the chunk.
+     Fast parallel write of one audio chunk through the Firestore REST API.
      The SDK sends writes one after another on a single stream; parallel HTTP
      requests upload a song about 3.5x faster. Result is the same document. */
   window.fastSet = async (path, data) => {
@@ -87,7 +88,7 @@
     const r = await fetch(url, {
       method: 'PATCH',
       headers: { Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields: { d: { stringValue: data } } }),
+      body: JSON.stringify({ fields: { d: { bytesValue: data } } }), // stored as raw bytes (no base64 overhead)
     });
     if (!r.ok) throw new Error('upload ' + r.status);
   };
