@@ -417,7 +417,7 @@ body.qview #vmusic .bar,body.qview #chips,body.qview #subs{display:none}
 <!-- v48 drive -->
 </head>
 <body>
-<div id="app"><header><h1>ספריית שמע לאימונים <small style="font-size:12px;color:var(--muted)">גרסה 142</small></h1></header>
+<div id="app"><header><h1>ספריית שמע לאימונים <small style="font-size:12px;color:var(--muted)">גרסה 143</small><button id="libkey" onclick="libCodeDialog()" aria-label="קוד ספרייה" title="קוד ספרייה" style="border:0;background:var(--soft);border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;vertical-align:middle;margin-inline-start:8px">🔑</button></h1></header>
 <div id="sv" class="sub" style="max-width:720px;margin:auto;padding:0 16px"></div>
 <main>
   <div id="tabbar"><div class="chips" id="tabs"></div></div>
@@ -489,7 +489,7 @@ function put(it){cloudPut(it);if(window.drvTidySoon&&it.asset)drvTidySoon();if(!
   try{const m={...it};delete m.blob;const q=tx('readwrite').put(m);q.onsuccess=statSoon;q.onerror=()=>{$('sv').textContent='⚠ השמירה במכשיר נכשלה (אחסון המכשיר מלא?)'}}catch(e){$('sv').textContent='⚠ השמירה נכשלה'}}
 async function stat(){let p='';try{if(navigator.storage&&navigator.storage.persisted)p=(await navigator.storage.persisted())?' · אחסון מוגן':' · אחסון לא מוגן'}catch(e){}
   const c=items.filter(i=>i.asset||i.ac).length,rd=items.filter(i=>i.blob).length,rdt=items.length&&rd===items.length?' · ✓ הכול מוכן לניגון במכשיר':' · '+rd+'/'+items.length+' מוכנים לניגון במכשיר';
-  $('sv').textContent=D?(!items.length?'☁ הענן מחובר':(c===items.length?'☁ כל '+items.length+' הקבצים שמורים בענן':'☁ '+c+' מתוך '+items.length+' קבצים שמורים בענן (השאר רק במכשיר הזה)')+rdt+p):(!cl?'מתחבר לענן…':db?'⚠ אין חיבור לענן: הנתונים נשמרים רק בדפדפן הזה ('+items.length+' קבצים)'+p+'. כדי לסנכרן בין מכשירים יש להגדיר Firebase בקובץ config.js':'⚠ האחסון בדפדפן לא זמין, הקבצים לא יישמרו')}
+  $('sv').textContent=D?(!items.length?'☁ הענן מחובר':(c===items.length?'☁ כל '+items.length+' הקבצים שמורים בענן':'☁ '+c+' מתוך '+items.length+' קבצים שמורים בענן (השאר רק במכשיר הזה)')+rdt+p):(!cl?'מתחבר לענן…':db?'⚠ אין חיבור לענן: הנתונים נשמרים רק בדפדפן הזה ('+items.length+' קבצים)'+p+'. כדי לסנכרן בין מכשירים, לחץ על 🔑 והזן את קוד הספרייה':'⚠ האחסון בדפדפן לא זמין, הקבצים לא יישמרו')}
 function rm(id,asset,ac){if(D&&ac){for(let k=0;k<ac;k++){try{D.doc('audio/'+id+'_'+k).delete().catch(()=>{})}catch(e){}}}
   if(db){try{tx('readwrite').delete(id)}catch(e){}try{db.transaction('blobs','readwrite').objectStore('blobs').delete(id)}catch(e){}}
   if(D){D.doc('items/'+id).delete().catch(()=>{});if(asset&&asset.indexOf('drive')===0)drvTrash(asset,id);else if(asset&&A)A.delete(asset).catch(()=>{})}}
