@@ -1,9 +1,11 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Every device signs in anonymously. Anyone who opens the app can read and write the library.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Each library lives under libs/<access code>/<collection>/<document>.
+    // There is no rule for the libs collection itself, so nobody can list the
+    // codes: you can only reach a library if you already know its code.
+    match /libs/{code}/{coll}/{doc} {
+      allow read, write: if request.auth != null && code.size() >= 14;
     }
   }
 }
