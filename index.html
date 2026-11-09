@@ -1367,7 +1367,7 @@ function scrollCur(anim){const A=$('app'),r=$('list').querySelector('.item[data-
   requestAnimationFrame(stp)}
 function cloudPut(it){if(!D)return;const m={...it};delete m.blob;try{D.doc('items/'+it.id).set(JSON.parse(JSON.stringify(m))).catch(()=>{})}catch(e){}}
 function playable(u){return new Promise(res=>{const a=new Audio();const t=setTimeout(()=>res(false),12000);a.preload='metadata';a.onloadedmetadata=()=>{clearTimeout(t);res(true)};a.onerror=()=>{clearTimeout(t);res(false)};a.src=u})}
-const upBusy=new Set(),dlBusy=new Set(),CH=180000;let dlTag='',syncing=false;
+const upBusy=new Set(),dlBusy=new Set(),CH=640000,CHB=Math.ceil(CH/3)*4+14,cloudSet=(p,d)=>window.fastSet?window.fastSet(p,d).catch(()=>D.doc(p).set({d})):D.doc(p).set({d});let dlTag='',syncing=false;
 async function syncDown(){if(syncing||!D)return;syncing=true;
   try{const qs=new Set(plist.map(x=>qid(x)));for(;;){const need=localFull?[]:items.filter(i=>(i.ac||i.asset)&&!i.blob&&!i._fail&&!isDead(i)).sort((a,b)=>(qs.has(b.id)?1:0)-(qs.has(a.id)?1:0));if(!need.length)break;
     const tot=items.filter(i=>i.ac||i.asset).length,done=tot-need.length;dlTag='('+(done+1)+'/'+tot+') ';
@@ -1507,18 +1507,18 @@ async function relayOwner(){
     const delChunks=(id,n)=>{for(let k=0;k<n;k++){try{D.doc('audio/s_'+id+'_'+k).delete().catch(()=>{})}catch(e){}}};
     for(const x of sq.slice()){const mine=rq.filter(r=>r.id===x.id),pend=mine.filter(r=>!aq.has(r.k));
       if((mine.length&&!pend.length)||Date.now()-(x.t||0)>6*3600000){await D.doc('stg/'+x.id).delete();delChunks(x.id,x.n||0);for(const r of mine){D.doc('req/'+r.k).delete().catch(()=>{});D.doc('ack/'+r.k).delete().catch(()=>{})}sq=sq.filter(y=>y!==x)}}
-    const staged=new Set(sq.map(x=>x.id));let used=sq.reduce((a,x)=>a+(x.n||0)*240014,0)+items.reduce((a,i)=>a+(i.ac||0)*240014,0);
+    const staged=new Set(sq.map(x=>x.id));let used=sq.reduce((a,x)=>a+(x.n||0)*CHB,0)+items.reduce((a,i)=>a+(i.ac||0)*CHB,0);
     const todo=rq.filter(r=>!aq.has(r.k)).filter((r,ix,arr)=>arr.findIndex(z=>z.id===r.id)===ix&&!staged.has(r.id));let stop=false;
     const stageOne=async r=>{if(stop)return;
       const it=items.find(i=>i.id===r.id);if(!it||!it.asset||it.asset.indexOf('drive')!==0){if(!it||it.ac)D.doc('req/'+r.k).delete().catch(()=>{});return}
       if(Date.now()<drvBlock)return;
       let bl=it.blob;if(!bl){try{if(!await getM())return;bl=await driveDown(it)}catch(e){if(e&&DRV_FATAL.includes(e.code)){drvFail(e);stop=true}return}}
-      const n=Math.ceil(bl.size/CH);if(used+n*240014>92*1048576)return;used+=n*240014;
+      const n=Math.ceil(bl.size/CH);if(used+n*CHB>92*1048576)return;used+=n*CHB;
       try{const buf=new Uint8Array(await bl.arrayBuffer());let nx=0,err=null;
-        const worker=async()=>{while(!err){const k=nx++;if(k>=n)return;let ok=false;for(let t=0;t<3&&!ok;t++){try{await D.doc('audio/s_'+r.id+'_'+k).set({d:b64(buf.subarray(k*CH,(k+1)*CH))});ok=true}catch(e){if(t===2)throw e}}}};
+        const worker=async()=>{while(!err){const k=nx++;if(k>=n)return;let ok=false;for(let t=0;t<3&&!ok;t++){try{await cloudSet('audio/s_'+r.id+'_'+k,b64(buf.subarray(k*CH,(k+1)*CH)));ok=true}catch(e){if(t===2)throw e}}}};
         await Promise.all(Array.from({length:Math.min(12,n)},()=>worker().catch(e=>{err=err||e})));if(err)throw err;
         await D.doc('stg/'+r.id).set({n,mime:it.mime||bl.type||'',t:Date.now()});staged.add(r.id)}
-      catch(e){delChunks(r.id,n);used-=n*240014}};
+      catch(e){delChunks(r.id,n);used-=n*CHB}};
     {let nx=0;await Promise.all(Array.from({length:Math.min(3,todo.length)},async()=>{while(nx<todo.length){const r=todo[nx++];try{await stageOne(r)}catch(e){}}}))}
   }catch(e){}finally{relayBusy=false}}
 let asErrShown=false;
@@ -1542,11 +1542,11 @@ async function toCloud(it){
   let src=it.blob,cq=false;
   if(false){try{$('sv').textContent='☁ מכווץ "'+it.name+'" לענן…';const c=await compressAudio(it.blob,p=>{$('sv').textContent='☁ מכווץ "'+it.name+'" '+Math.round(p*100)+'%'});if(c&&c.size>1000&&c.size<it.blob.size*0.85){src=c;cq=true}}catch(e){if(!window._cqErr){window._cqErr=1;showErr('כיווץ לענן לא זמין, מעלה את הקובץ המקורי: '+((e&&e.message)||e))}}}
   const n=Math.ceil(src.size/CH);
-  {const used=items.reduce((a,i)=>a+(i.ac||0)*240014,0);
-   if(used+n*240014>(window.CLOUD_CAP_MB||900)*1048576){upBusy.delete(it.id);it.cloud='no';put(it);if(!window._capShown){window._capShown=1;showErr('הענן כמעט מלא (הגעת למגבלת הנפח שהוגדרה ב-config.js). השירים החדשים נשמרים רק במכשיר הזה, ולא יסונכרנו למכשירים אחרים.')}stat();render();return}}
+  {const used=items.reduce((a,i)=>a+(i.ac||0)*CHB,0);
+   if(used+n*CHB>(window.CLOUD_CAP_MB||900)*1048576){upBusy.delete(it.id);it.cloud='no';put(it);if(!window._capShown){window._capShown=1;showErr('הענן כמעט מלא (הגעת למגבלת הנפח שהוגדרה ב-config.js). השירים החדשים נשמרים רק במכשיר הזה, ולא יסונכרנו למכשירים אחרים.')}stat();render();return}}
   try{const buf=new Uint8Array(await src.arrayBuffer());
     {let nx=0,dn=0,err=null;const W=12;
-      const worker=async()=>{while(!err){const k=nx++;if(k>=n)return;let ok=false;for(let t=0;t<3&&!ok;t++){try{await D.doc('audio/'+it.id+'_'+k).set({d:b64(buf.subarray(k*CH,(k+1)*CH))});ok=true}catch(e){if(t===2)throw e}}dn++;$('sv').textContent='☁ מעלה "'+it.name+'" '+Math.min(100,Math.round(dn/n*100))+'%'}};
+      const worker=async()=>{while(!err){const k=nx++;if(k>=n)return;let ok=false;for(let t=0;t<3&&!ok;t++){try{await cloudSet('audio/'+it.id+'_'+k,b64(buf.subarray(k*CH,(k+1)*CH)));ok=true}catch(e){if(t===2)throw e}}dn++;$('sv').textContent='☁ מעלה "'+it.name+'" '+Math.min(100,Math.round(dn/n*100))+'%'}};
       await Promise.all(Array.from({length:Math.min(W,n)},()=>worker().catch(e=>{err=err||e})));if(err)throw err}
     it.ac=n;it.mime=cq?'audio/mpeg':(it.blob.type||'');it.cq=cq?1:0;delete it.cloud;it._upErr=0;put(it);
   }catch(e){for(let k=0;k<n;k++){try{D.doc('audio/'+it.id+'_'+k).delete().catch(()=>{})}catch(_){}}
