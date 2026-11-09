@@ -414,11 +414,23 @@ body.qview #vmusic .bar,body.qview #chips,body.qview #subs{display:none}
 .folder.fpar>span:nth-child(2)::before{content:'';flex:none;width:40px;height:40px;border-radius:12px;background:rgba(255,55,95,.16) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23ff375f' d='M3 6.5A2.5 2.5 0 0 1 5.5 4h3.6c.6 0 1.2.3 1.6.8L12 6.4h6.5A2.5 2.5 0 0 1 21 8.9v8.6a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z'/%3E%3C/svg%3E") center/24px no-repeat}
 </style>
 <style>.catswap{animation:catSw .32s cubic-bezier(.2,.8,.2,1)}@keyframes catSw{from{opacity:0;transform:translateX(var(--sd,0))}to{opacity:1;transform:none}}</style>
+<style>
+#store{max-width:720px;margin:6px auto 0;padding:0 16px}
+#store .sb{display:flex;align-items:center;gap:10px;width:100%;border:0;background:var(--soft);color:var(--ink);font:inherit;border-radius:12px;padding:8px 12px;cursor:pointer;text-align:start}
+#store .sbt{flex:1;min-width:0;font-size:13px}
+#store .sbt b{font-weight:600}
+#store .sbm{display:block;height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:5px}
+#store .sbm i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .4s}
+#store .sbm i.warn{background:#ff9f0a}#store .sbm i.full{background:var(--danger)}
+#store .sbd{font-size:13px;color:var(--muted);padding:8px 12px 2px;line-height:1.7}
+#store .sbd[hidden]{display:none}
+</style>
 <!-- v48 drive -->
 </head>
 <body>
-<div id="app"><header><h1>ספריית שמע לאימונים <small style="font-size:12px;color:var(--muted)">גרסה 143</small><button id="libkey" onclick="libCodeDialog()" aria-label="קוד ספרייה" title="קוד ספרייה" style="border:0;background:var(--soft);border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;vertical-align:middle;margin-inline-start:8px">🔑</button></h1></header>
+<div id="app"><header><h1>ספריית שמע לאימונים <small style="font-size:12px;color:var(--muted)">גרסה 144</small><button id="libkey" onclick="libCodeDialog()" aria-label="קוד ספרייה" title="קוד ספרייה" style="border:0;background:var(--soft);border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;vertical-align:middle;margin-inline-start:8px">🔑</button></h1></header>
 <div id="sv" class="sub" style="max-width:720px;margin:auto;padding:0 16px"></div>
+<div id="store" hidden></div>
 <main>
   <div id="tabbar"><div class="chips" id="tabs"></div></div>
   <div id="vmusic">
@@ -487,9 +499,25 @@ function loadAll(){return new Promise(res=>{if(!db)return res();const q=tx('read
   bq.onsuccess=()=>{const m=new Map(bq.result.map(b=>[b.id,b.buf?new Blob([b.buf],{type:b.type||''}):b.blob]));idbMap=new Map([...m].filter(([k,v])=>v&&v.size>0));arr.forEach(i=>{if(m.has(i.id)){const bl=m.get(i.id);if(bl&&bl.size>0)i.blob=bl}});items=arr.sort((a,b)=>a.added-b.added);res()};bq.onerror=()=>{items=arr;res()}};q.onerror=()=>res()})}
 function put(it){cloudPut(it);if(window.drvTidySoon&&it.asset)drvTidySoon();if(!db){if(!D)$('sv').textContent='⚠ הקובץ לא נשמר: האחסון בדפדפן לא זמין';return}
   try{const m={...it};delete m.blob;const q=tx('readwrite').put(m);q.onsuccess=statSoon;q.onerror=()=>{$('sv').textContent='⚠ השמירה במכשיר נכשלה (אחסון המכשיר מלא?)'}}catch(e){$('sv').textContent='⚠ השמירה נכשלה'}}
-async function stat(){let p='';try{if(navigator.storage&&navigator.storage.persisted)p=(await navigator.storage.persisted())?' · אחסון מוגן':' · אחסון לא מוגן'}catch(e){}
+async function stat(){try{storeUI()}catch(e){}let p='';try{if(navigator.storage&&navigator.storage.persisted)p=(await navigator.storage.persisted())?' · אחסון מוגן':' · אחסון לא מוגן'}catch(e){}
   const c=items.filter(i=>i.asset||i.ac).length,rd=items.filter(i=>i.blob).length,rdt=items.length&&rd===items.length?' · ✓ הכול מוכן לניגון במכשיר':' · '+rd+'/'+items.length+' מוכנים לניגון במכשיר';
   $('sv').textContent=D?(!items.length?'☁ הענן מחובר':(c===items.length?'☁ כל '+items.length+' הקבצים שמורים בענן':'☁ '+c+' מתוך '+items.length+' קבצים שמורים בענן (השאר רק במכשיר הזה)')+rdt+p):(!cl?'מתחבר לענן…':db?'⚠ אין חיבור לענן: הנתונים נשמרים רק בדפדפן הזה ('+items.length+' קבצים)'+p+'. כדי לסנכרן בין מכשירים, לחץ על 🔑 והזן את קוד הספרייה':'⚠ האחסון בדפדפן לא זמין, הקבצים לא יישמרו')}
+/* מד אחסון: כמה מקום בענן מנוצל ונשאר, וכמה שירים נכנסים בערך */
+let storeOpen=false,devEst=null,devEstT=0;
+const fmtMB=b=>b>=1073741824?(b/1073741824).toFixed(2)+'GB':b<10485760&&b>0?(b/1048576).toFixed(1)+'MB':Math.round(b/1048576)+'MB';
+function storeUI(){const w=$('store');if(!w)return;if(!D){w.hidden=true;return}w.hidden=false;
+  const cap=(window.CLOUD_CAP_MB||900)*1048576,inCloud=items.filter(i=>i.ac>0),used=inCloud.reduce((a,i)=>a+cBytes(i),0),left=Math.max(0,cap-used),pct=Math.min(100,used/cap*100);
+  const per=inCloud.length?used/inCloud.length:3.5e6,more=Math.floor(left/per),notUp=items.filter(i=>!(i.ac>0)&&!i.asset).length;
+  if(Date.now()-devEstT>60000&&navigator.storage&&navigator.storage.estimate){devEstT=Date.now();navigator.storage.estimate().then(e=>{devEst=e;storeUI()}).catch(()=>{})}
+  const onDev=items.reduce((a,i)=>a+(i.blob?i.blob.size:0),0);
+  const html='<button class="sb" aria-expanded="'+storeOpen+'"><span class="sbt"><b>אחסון בענן:</b> '+fmtMB(used)+' מתוך '+fmtMB(cap)+' · נשארו '+fmtMB(left)+' (עוד כ-'+more+' שירים)<span class="sbm"><i class="'+(pct>=95?'full':pct>=80?'warn':'')+'" style="width:'+pct.toFixed(1)+'%"></i></span></span><span aria-hidden="true">'+(storeOpen?'▴':'▾')+'</span></button>'+
+    '<div class="sbd"'+(storeOpen?'':' hidden')+'>'+
+    '☁ '+inCloud.length+' שירים בענן · ממוצע '+fmtMB(per)+' לשיר · '+pct.toFixed(1)+'% מנוצל'+
+    (notUp?'<br>⚠ '+notUp+' שירים עדיין לא בענן (קיימים רק במכשיר שהעלה אותם)':'')+
+    '<br>📱 במכשיר הזה: '+fmtMB(onDev)+' של שירים'+(devEst&&devEst.quota?' · הדפדפן מאפשר עד '+fmtMB(devEst.quota):'')+
+    '<br><span style="font-size:12px">המגבלה בענן היא '+fmtMB(cap)+' כדי להישאר בתוכנית החינמית של Firebase (1GB).</span></div>';
+  if(w._h===html)return;w._h=html;w.innerHTML=html;
+  w.querySelector('.sb').onclick=()=>{storeOpen=!storeOpen;storeUI()}}
 function rm(id,asset,ac){if(D&&ac){for(let k=0;k<ac;k++){try{D.doc('audio/'+id+'_'+k).delete().catch(()=>{})}catch(e){}}}
   if(db){try{tx('readwrite').delete(id)}catch(e){}try{db.transaction('blobs','readwrite').objectStore('blobs').delete(id)}catch(e){}}
   if(D){D.doc('items/'+id).delete().catch(()=>{});if(asset&&asset.indexOf('drive')===0)drvTrash(asset,id);else if(asset&&A)A.delete(asset).catch(()=>{})}}
