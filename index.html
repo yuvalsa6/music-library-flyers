@@ -845,6 +845,16 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
 .lvol input{flex:1;min-width:0;accent-color:var(--accent);height:30px;margin:0;direction:ltr}
 .lvol b{flex:none;min-width:40px;font-size:13px;font-weight:600;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
 .lvfix{flex:1 1 100%}
+/* פס עוצמה עם הגברה */
+.vrng{-webkit-appearance:none;appearance:none;height:30px;background:transparent;--vp:75%}
+.vrng::-webkit-slider-runnable-track{height:6px;border-radius:3px;background:linear-gradient(to right,var(--fill) 0 min(var(--vp),75%),color-mix(in srgb,var(--ink) 16%,transparent) min(var(--vp),75%) 75%,transparent 75% calc(75% + 3px),color-mix(in srgb,#ff9f0a 30%,transparent) calc(75% + 3px) 100%)}
+.vrng.boost::-webkit-slider-runnable-track{background:linear-gradient(to right,var(--fill) 0 75%,transparent 75% calc(75% + 3px),#ff9f0a calc(75% + 3px) var(--vp),color-mix(in srgb,#ff9f0a 30%,transparent) var(--vp) 100%)}
+.vrng::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;margin-top:-8px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.vrng.boost::-webkit-slider-thumb{background:#ff9f0a}
+.vrng::-moz-range-track{height:6px;border-radius:3px;background:color-mix(in srgb,var(--ink) 16%,transparent)}
+.vrng::-moz-range-thumb{width:22px;height:22px;border:0;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+#devvolt.boost,#lvolt.boost{color:#c46a00}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #devvolt.boost,:root:not([data-theme="light"]) #lvolt.boost{color:#ffb340}}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -872,7 +882,7 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
 </main></div>
 
 <div id="scrim" hidden></div><div class="player min" id="player"><div id="mprog"><i></i></div>
-  <div class="devbar" id="devbar" hidden><span id="devtxt"></span><button class="sm" id="devhere" hidden>בחר מקור</button><div class="devnow" id="devnow" hidden><b id="devsong"></b><em id="devtime"></em><i id="devfill"></i></div><div class="devvol" id="devvolw" hidden><span>🔈</span><input type="range" id="devvol" min="0" max="100" step="1" value="100" aria-label="עוצמת שמע"><span id="devvolt">100%</span></div></div>
+  <div class="devbar" id="devbar" hidden><span id="devtxt"></span><button class="sm" id="devhere" hidden>בחר מקור</button><div class="devnow" id="devnow" hidden><b id="devsong"></b><em id="devtime"></em><i id="devfill"></i></div><div class="devvol" id="devvolw" hidden><span>🔈</span><input type="range" id="devvol" class="vrng" min="10" max="130" step="1" value="100" aria-label="עוצמת שמע (10% עד 130%)"><span id="devvolt">100%</span></div></div>
   <div class="pin">
     <div class="phead"><div id="pimg"></div><div class="title" id="ptitle"></div><button class="sm" id="pmin" aria-label="הקטנה או הרחבה">▴</button><button class="sm" id="pclose" aria-label="סגירת הנגן">✕</button></div>
     <div class="seek"><span id="cur">0:00</span><div id="sk"><div id="ov2"></div><input type="range" id="range" min="0" max="1000" value="0" aria-label="מיקום בהקלטה"><div id="ov3"></div></div><span id="dur">0:00</span></div>
@@ -893,7 +903,7 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
       <button class="sm" id="lsv">＋ שמור קטע</button>
     </div>
     <div class="ctrl">
-      <span class="lvol" id="lvolw"><span>עוצמה</span><input type="range" id="lvol" min="0" max="100" step="1" value="100" aria-label="עוצמה בנגן הזה"><b id="lvolt">100%</b></span><button class="sm lvfix" id="lvfix" hidden>תגובה מיידית</button>
+      <span class="lvol" id="lvolw"><span>עוצמה</span><input type="range" id="lvol" class="vrng" min="10" max="130" step="1" value="100" aria-label="עוצמה בנגן הזה (10% עד 130%)"><b id="lvolt">100%</b></span><button class="sm lvfix" id="lvfix" hidden>תגובה מיידית</button>
       <label>מהירות <select id="spd"><option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="0.9">0.9x</option><option value="1" selected>1x</option><option value="1.1">1.1x</option></select></label>
       <label>ספירה <select id="cd"><option value="0">ללא</option><option value="1">3-2-1</option><option value="2">5-6-7-8</option></select></label>
       <button class="sm" id="fs">מצב גדול</button>
@@ -1625,10 +1635,15 @@ async function checkUpdate(out){out('בודק…');let latest=0;
   setTimeout(()=>location.reload(),900)}
 /* עוצמה בנגן הזה: משנים או מחזירים את העוצמה גם במכשיר עצמו (לא רק מרחוק).
    באייפון עוצמה מתחת ל-100% עוברת דרך מערכת השמע של iOS ומאטה את התגובה; ב-100% אפשר להחזיר תגובה מיידית (טעינה מחדש) */
-function lvolShow(){const e=$('lvol');if(!e)return;const v=Math.round(VOL*100);if(document.activeElement!==e)e.value=String(v);$('lvolt').textContent=v+'%';
+/* פס עוצמה 10%–130%: עד 100% רגיל, מעל 100% הגברה (בצבע אחר, עם סימון ב-100%) */
+const VMIN=0.1,VMAX=1.3;
+function volLbl(el,v){if(!el)return;const p=Math.round(v*100);el.textContent=p+'%';el.classList.toggle('boost',p>100)}
+function vrngPaint(e){if(!e)return;const p=(+e.value-10)/120*100,m=75;e.style.setProperty('--vp',p+'%');e.classList.toggle('boost',+e.value>100)}
+document.querySelectorAll&&setTimeout(()=>document.querySelectorAll('.vrng').forEach(vrngPaint),0);
+function lvolShow(){const e=$('lvol');if(!e)return;const v=Math.round(VOL*100);if(document.activeElement!==e)e.value=String(v);volLbl($('lvolt'),VOL);vrngPaint(e);
   const fx=$('lvfix');if(fx)fx.hidden=true;
   const w=$('lvolw');if(w)w.hidden=!!(typeof IOSV!=='undefined'&&IOSV&&!(gainOn&&!routeReset))}
-{const e=$('lvol');if(e){e.addEventListener('input',()=>{const v=(+e.value)/100;$('lvolt').textContent=Math.round(v*100)+'%';applyVol(v);if(isHost)rcPub(true);lvolShow()})}}
+{const e=$('lvol');if(e){e.addEventListener('input',()=>{const v=(+e.value)/100;volLbl($('lvolt'),v);vrngPaint(e);applyVol(v);if(isHost)rcPub(true);lvolShow()})}}
 setInterval(lvolShow,1000);setTimeout(lvolShow,500);
 /* iPhone: the slower sound route is used only while another device controls this one.
    The volume set remotely stays (also when the controlling phone is locked or offline).
@@ -1637,8 +1652,8 @@ setInterval(lvolShow,1000);setTimeout(lvolShow,500);
 let routeReset=false;
 let ctlOn=false;
 function ctlRestore(type){if(type==='vol')return;let v=1;try{v=parseFloat(localStorage.getItem('rvol'))}catch(e){}
-  if(v>=0&&v<0.999&&Math.abs(VOL-v)>0.005){applyVol(v,true);try{lvolShow()}catch(e){}if(isHost)rcPub(true)}}
-function ctlEnded(){ctlOn=false;if(typeof IOSV==='undefined'||!IOSV)return;if(VOL<1){applyVol(1);try{lvolShow()}catch(e){}}if(gainOn)routeReset=true}
+  if(v>0&&Math.abs(v-1)>0.005&&Math.abs(VOL-v)>0.005){applyVol(v,true);try{lvolShow()}catch(e){}if(isHost)rcPub(true)}}
+function ctlEnded(){ctlOn=false;if(typeof IOSV==='undefined'||!IOSV)return;if(Math.abs(VOL-1)>0.001){applyVol(1);try{lvolShow()}catch(e){}}if(gainOn)routeReset=true}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&routeReset&&aP()&&!remote){try{sessionStorage.setItem('quietReload','1')}catch(e){}location.reload()}});
 function artIc(isCur){return isCur&&!aP()?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
@@ -2538,14 +2553,15 @@ let volBlocked=false;const IOSV=/iP(hone|ad|od)/.test(navigator.userAgent)||(nav
 /* iPhone: connecting the audio route while a song plays can leave the sound bypassing it (volume stays the same).
    So pause for a moment, connect, and resume */
 let volErr='';
-function volGraph(v){const wasPl=!NPD.get.call(au);try{if(wasPl)rawPause();const src=ACX.createMediaElementSource(au);GN=ACX.createGain();src.connect(GN);GN.connect(ACX.destination);GN.gain.value=v;gainOn=true;volErr='';if(wasPl)setTimeout(()=>rawPlay().catch(()=>{}),60);return true}catch(e){volErr=String((e&&e.message)||e).slice(0,60);if(wasPl)rawPlay().catch(()=>{});return false}}
-const volMode=()=>gainOn?'gain':volBlocked?'blocked':IOSV?(VOL>=0.999?'ios-100':'ios-none'):(Math.abs(NVD.get.call(au)-VOL)<0.01?'native':'none');
-function applyVol(v,remoteCmd){v=Math.max(0,Math.min(1,v));VOL=v;try{localStorage.setItem('vol',String(v))}catch(e){}
-  try{au.volume=v}catch(e){}
-  if(gainOn&&GN){GN.gain.value=v;volBlocked=false;volBanner(false);return}
+function volGraph(v){const wasPl=!NPD.get.call(au);try{if(wasPl)rawPause();const src=ACX.createMediaElementSource(au);GN=ACX.createGain();let out=GN;try{const L=ACX.createDynamicsCompressor();L.threshold.value=-1;L.knee.value=0;L.ratio.value=20;L.attack.value=0.003;L.release.value=0.25;GN.connect(L);out=L}catch(e){}src.connect(GN);out.connect(ACX.destination);try{au.volume=1}catch(e){}GN.gain.value=v;gainOn=true;volErr='';if(wasPl)setTimeout(()=>rawPlay().catch(()=>{}),60);return true}catch(e){volErr=String((e&&e.message)||e).slice(0,60);if(wasPl)rawPlay().catch(()=>{});return false}}
+const volMode=()=>gainOn?(VOL>1?'gain+':'gain'):volBlocked?'blocked':IOSV?(VOL>=0.999?'ios-100':'ios-none'):(Math.abs(NVD.get.call(au)-VOL)<0.01?'native':'none');
+function applyVol(v,remoteCmd){v=Math.max(VMIN,Math.min(VMAX,v));VOL=v;try{localStorage.setItem('vol',String(v))}catch(e){}
+  if(gainOn&&GN){try{au.volume=1}catch(e){}GN.gain.value=v;volBlocked=false;volBanner(false);return}
+  try{au.volume=Math.min(1,v)}catch(e){}
   /* iPhone/iPad: the element may report the new volume but the sound doesn't change, so never trust it there */
-  if(IOSV&&v>=0.999){volBlocked=false;volBanner(false);return}
-  if(!IOSV&&Math.abs(au.volume-v)<0.01){volBlocked=false;volBanner(false);return}
+  if(IOSV&&Math.abs(v-1)<0.001){volBlocked=false;volBanner(false);return}
+  /* Android/computer: up to 100% the regular volume (immediate). Only above 100% the sound goes through Web Audio */
+  if(!IOSV&&v<=1){volBlocked=false;volBanner(false);return}
   /* iPhone: au.volume is ignored. Route through Web Audio, which needs an unlocked (running) audio context */
   if(!ACX){try{const C=window.AudioContext||window.webkitAudioContext;if(C)ACX=new C()}catch(e){}}
   if(!ACX)return;
@@ -2554,7 +2570,7 @@ function applyVol(v,remoteCmd){v=Math.max(0,Math.min(1,v));VOL=v;try{localStorag
 /* באייפון אי אפשר לשנות עוצמה בלי לחיצה אחת על המסך של המכשיר המנגן */
 function volBanner(on){let b=$('volbn');if(!on){if(b)b.remove();return}if(b)return;b=document.createElement('button');b.id='volbn';
   b.textContent='כדי לשנות כאן עוצמה מהמכשיר השני, לחץ פעם אחת';b.onclick=()=>{unlockAcx();setTimeout(()=>applyVol(VOL),60);b.remove()};document.body.appendChild(b)}
-if(VOL<1){if(IOSV){VOL=1;try{localStorage.setItem('vol','1')}catch(e){}}else setTimeout(()=>applyVol(VOL),0)}
+if(VOL>1||(VOL<1&&IOSV)){VOL=1;try{localStorage.setItem('vol','1')}catch(e){}}else if(VOL<1)setTimeout(()=>applyVol(VOL),0)
 function rcPub(force){if(!(D||rmOk())||!isHost)return;if(window.rsBusyNow&&!force)return;const now=Date.now();
   if(!force&&now-pubLast<350){clearTimeout(pubTm);pubTm=setTimeout(()=>rcPub(true),350);return}
   pubLast=now;hbn++;
@@ -2644,8 +2660,8 @@ function follow(d){
   if(!d.playing&&!npaused())rawPause()}
 /* שלט: סליידר עוצמה */
 let optVol=0,volTm=0,volLast=0;
-const volShow=v=>{const e=$('devvol');if(!e)return;e.value=String(Math.round(v*100));$('devvolt').textContent=Math.round(v*100)+'%'};
-{const e=$('devvol');if(e){e.addEventListener('input',()=>{if(rcDiag)rcDiag.vol=(rcDiag.vol||0)+1;const v=(+e.value)/100;$('devvolt').textContent=Math.round(v*100)+'%';optVol=Date.now()+1200;const now=Date.now();clearTimeout(volTm);if(now-volLast>=100){volLast=now;rcSend('vol',v)}else volTm=setTimeout(()=>{volLast=Date.now();rcSend('vol',v)},100)});
+const volShow=v=>{const e=$('devvol');if(!e)return;e.value=String(Math.round(v*100));volLbl($('devvolt'),v);vrngPaint(e)};
+{const e=$('devvol');if(e){e.addEventListener('input',()=>{if(rcDiag)rcDiag.vol=(rcDiag.vol||0)+1;const v=(+e.value)/100;volLbl($('devvolt'),v);vrngPaint(e);optVol=Date.now()+1200;const now=Date.now();clearTimeout(volTm);if(now-volLast>=100){volLast=now;rcSend('vol',v)}else volTm=setTimeout(()=>{volLast=Date.now();rcSend('vol',v)},100)});
   e.addEventListener('change',()=>{clearTimeout(volTm);optVol=Date.now()+1200;rcSend('vol',(+e.value)/100)});
   ['pointerdown','touchstart'].forEach(ev=>e.addEventListener(ev,x=>x.stopPropagation(),{passive:true}))}}
 function rcHandle(c){const t=c.type,a=c.arg;
@@ -2809,9 +2825,9 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=178;
+const APP_VER=179;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
