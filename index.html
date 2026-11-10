@@ -665,7 +665,7 @@ input[type=range]:active{opacity:1}
 .fpr.on{background:color-mix(in srgb,var(--accent) 8%,transparent)}
 .fpr.on>svg:last-child{color:var(--accent)}
 /* חלונות אחרים (העברה חכמה, בחירה) עולים גם הם מלמטה */
-.pkov:not(.as){align-items:flex-end!important;padding:0!important}
+.pkov:not(.as):not(.nfov){align-items:flex-end!important;padding:0!important}
 .pkov:not(.as)>.pkcard{width:100%!important;max-width:560px!important;max-height:86vh!important;margin:0!important;border-radius:22px 22px 0 0!important;padding:18px 16px calc(16px + env(safe-area-inset-bottom,0px))!important;animation:shUp .3s cubic-bezier(.2,.9,.3,1.04)!important}
 @media (orientation:landscape) and (max-height:500px){.fold{min-height:52px}.aso{min-height:46px}.ash{max-height:100vh}}
 /* לשונית יבוא */
@@ -693,6 +693,27 @@ body.iview #tabbar{display:none}
 .ipbar h2{flex:1;margin:0;font-size:22px;font-weight:800}
 .iback{display:inline-flex;align-items:center;gap:2px;min-height:44px;padding:0 10px 0 4px;border:0;border-radius:999px;background:var(--soft);color:var(--accent);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
 .iback svg{width:20px;height:20px}
+/* חלון תיקייה חדשה */
+.nfov{position:fixed;inset:0;z-index:92;display:flex;align-items:flex-start;justify-content:center;padding:max(14vh,calc(env(safe-area-inset-top,0px) + 40px)) 16px 16px;background:rgba(0,0,0,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);animation:ovIn .2s ease-out}
+.nfov.out{opacity:0;transition:opacity .17s}
+.nfc{width:100%;max-width:340px;background:var(--surface);border-radius:22px;padding:22px 18px 16px;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.28);animation:nfIn .26s cubic-bezier(.2,.9,.3,1.15)}
+.nfov.out .nfc{transform:scale(.96);transition:transform .17s}
+@keyframes nfIn{from{opacity:0;transform:scale(.92) translateY(8px)}to{opacity:1;transform:none}}
+.nfi{width:56px!important;height:56px!important;border-radius:16px!important;margin:0 auto 10px;transition:background-color .25s,color .25s}
+.nfi svg{width:30px!important;height:30px!important}
+.nfc h2{margin:0;font-size:19px;font-weight:800}
+.nfw{margin:4px 0 14px;font-size:13.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nfin{display:block;width:100%;box-sizing:border-box;min-height:50px;padding:0 14px;border:2px solid transparent;border-radius:14px;background:var(--soft);color:var(--ink);font:inherit;font-size:17px;text-align:start;outline:none;transition:border-color .15s}
+.nfin:focus{border-color:var(--accent)}
+.nfov .nfin:focus,.nfov .nfin:focus-visible{outline:none!important;box-shadow:none!important}
+.nfe{min-height:20px;margin:6px 2px 4px;font-size:13.5px;color:var(--danger);text-align:start}
+.nfb{display:flex;gap:10px}
+.nfb button{flex:1;min-height:48px;border:0;border-radius:14px;font:inherit;font-size:16.5px;font-weight:700;cursor:pointer}
+.nfx{background:var(--soft);color:var(--ink)}
+.nfok{background:var(--fill);color:#fff}
+.nfok:disabled{opacity:.4;cursor:default}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .nfc{background:#1c1c1e}:root:not([data-theme="light"]) .nfin{background:#2c2c2e}}
+@media (prefers-reduced-motion:reduce){.nfc{animation:none}}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -1252,13 +1273,31 @@ function inboxView(L){
     const bf=bestFolder(it),m=d.querySelector('.meta');
     if(bf&&m){const s=document.createElement('button');s.className='sugg';s.innerHTML=ICN.folder;const sp=document.createElement('span');sp.textContent='העבר ל"'+(bf.sub?bf.sub.split(' / ').pop():bf.cat)+'"';s.appendChild(sp);s.dataset.ic=s.textContent;
       s.onclick=e=>{e.stopPropagation();sortTo(it,bf.cat,bf.sub)};m.appendChild(s)}})}
+/* חלון קופץ: תיקייה חדשה. הצבע של התיקייה מתעדכן לפי השם שמקלידים */
+function newFolderDialog(cat,p){if(document.querySelector('.nfov'))return;
+  const o=document.createElement('div');o.className='pkov nfov';
+  o.innerHTML='<div class="nfc" role="dialog" aria-modal="true" aria-labelledby="nft"><span class="fic nfi">'+ICN.folder+'</span><h2 id="nft">תיקייה חדשה</h2><p class="nfw"></p>'+
+    '<input class="nfin" aria-label="שם התיקייה" placeholder="שם התיקייה, למשל: רוני ושירז" autocomplete="off" enterkeyhint="done"><div class="nfe" aria-live="polite"></div>'+
+    '<div class="nfb"><button class="nfx">ביטול</button><button class="nfok" disabled>יצירה</button></div></div>';
+  const c=o.firstChild,inp=c.querySelector('.nfin'),ok=c.querySelector('.nfok'),err=c.querySelector('.nfe'),ic=c.querySelector('.nfi');
+  c.querySelector('.nfw').textContent='בתוך: '+locStr(cat,p);
+  [ok,c.querySelector('.nfx')].forEach(b=>b.dataset.ic=b.textContent);
+  const clean=()=>inp.value.trim().split('/').join(' ').replace(/ +/g,' ');
+  const upd=()=>{const n=clean();ok.disabled=!n;err.textContent='';o.style.setProperty('--fh',hueOf(n||cat))};upd();
+  const close=()=>{if(o.dataset.done)return;o.dataset.done=1;o.classList.add('out');setTimeout(()=>o.remove(),170)};
+  const go=()=>{const n=clean();if(!n)return;const q=p?p+' / '+n:n,fk=cat+'||'+q;
+    if(kids(cat,p).includes(n)){err.textContent='כבר יש כאן תיקייה בשם הזה';inp.focus();return}
+    folders.push(fk);curCat=cat;curSub=q;if(p)openK.add(cat+'||'+p);openK.add(fk);openingKey=fk;saveLS();close();render();showOk('✓ נוצרה תיקייה: '+n);suggestMove(cat,q)};
+  inp.oninput=upd;inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go()}if(e.key==='Escape')close()};
+  ok.onclick=go;ok.onpointerdown=e=>{if(!ok.disabled){e.preventDefault();go()}};c.querySelector('.nfx').onclick=close;
+  o.onclick=e=>{if(e.target===o)close()};document.body.appendChild(o);setTimeout(()=>inp.focus(),60)}
 function artIc(isCur){return isCur&&!au.paused?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
   const here=()=>{curCat=cat;curSub=p};
   const swap=dir=>{const j=ix+dir;[sib[ix],sib[j]]=[sib[j],sib[ix]];forder[cat+'||'+parent]=sib;saveLS();render()};
   const opts=[{t:'הוספת שירים לכאן',ic:'music',run:here,lab:'file'},
-    {t:'תיקייה חדשה בתוכה',ic:'fplus',f:()=>{openK.add(key);addKey=key;here();render()}},{t:'שינוי שם',ic:'pencil',f:()=>renameNode(cat,p)}];
+    {t:'תיקייה חדשה בתוכה',ic:'fplus',f:()=>newFolderDialog(cat,p)},{t:'שינוי שם',ic:'pencil',f:()=>renameNode(cat,p)}];
   if(ix>0)opts.push({t:'הזזה למעלה',ic:'up',f:()=>swap(-1)});
   if(ix>=0&&ix<sib.length-1)opts.push({t:'הזזה למטה',ic:'down',f:()=>swap(1)});
   opts.push({t:'מחיקת התיקייה',ic:'trash',danger:true,f:()=>removeNode(cat,p)},{t:'ביטול',ghost:true});
@@ -1343,7 +1382,7 @@ function folderRow(L,cat,p,depth,label){
   items.filter(i=>i.cat===cat&&(i.sub||'')===p).forEach(it=>mkRow(it,box));
   const a=document.createElement('div');a.className='fadd';
   const ad=document.createElement('label');ad.htmlFor='file';ad.innerHTML=ICN.music+'<span>שירים</span>';ad.onclick=()=>{curCat=cat;curSub=p};
-  const ns=document.createElement('button');ns.innerHTML=ICN.fplus+'<span>תיקייה</span>';ns.onclick=()=>{addKey=key;render()};
+  const ns=document.createElement('button');ns.innerHTML=ICN.fplus+'<span>תיקייה</span>';ns.onclick=()=>newFolderDialog(cat,p);
   [ad,ns].forEach(x=>x.dataset.ic=x.textContent);a.append(ad,ns);box.appendChild(a)}
 const TBI={folder:'<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6.5A2.5 2.5 0 0 1 5.5 4h3.6c.6 0 1.2.3 1.6.8L12 6.4h6.5A2.5 2.5 0 0 1 21 8.9v8.6a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5zM12 10a1 1 0 0 0-1 1v2H9a1 1 0 1 0 0 2h2v2a1 1 0 1 0 2 0v-2h2a1 1 0 1 0 0-2h-2v-2a1 1 0 0 0-1-1z"/></svg>',
   add:'<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 17.5V6.2l10-2v6.3a1 1 0 1 1-2 0V6.6l-6 1.2v9.7a3 3 0 1 1-2-2.8zM19 14a1 1 0 0 1 1 1v2h2a1 1 0 1 1 0 2h-2v2a1 1 0 1 1-2 0v-2h-2a1 1 0 1 1 0-2h2v-2a1 1 0 0 1 1-1z"/></svg>',
@@ -1358,7 +1397,7 @@ function addRow(cat,p,ind){
   r.append(i,ok,x);setTimeout(()=>i.focus(),50);return r}
 function catView(L,cat){
   const a=document.createElement('div');a.className='acts tb';
-  const ns=document.createElement('button');ns.className='sm';ns.innerHTML=TBI.folder+'<span>תיקייה חדשה</span>';ns.onclick=()=>{addKey=cat+'||';render()};
+  const ns=document.createElement('button');ns.className='sm';ns.innerHTML=TBI.folder+'<span>תיקייה חדשה</span>';ns.onclick=()=>newFolderDialog(cat,'');
   const ad=document.createElement('label');ad.className='sm';ad.htmlFor='file';ad.innerHTML=TBI.add+'<span>הוספת שירים</span>';ad.onclick=()=>{curCat=cat;curSub=''};
   a.append(ns,ad);L.appendChild(a);if(addKey===cat+'||')L.appendChild(addRow(cat,'','0px'));
   const ks=kids(cat,''),rs=items.filter(i=>i.cat===cat&&!i.sub);
@@ -2286,7 +2325,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=153;
+const APP_VER=154;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
