@@ -1863,7 +1863,16 @@ au.onended=()=>{if(curQ){const it0=cur(),n=qStep(1);if(n){advAnim(curQ,n.e);cons
   if(!step(1))sync()};
 setInterval(()=>{if(!remote&&loopOn&&loopB!=null&&!aP()&&aT()>=loopB)aSeek(loopA||0)},40);
 
-$('range').oninput=e=>{if(aD())aSeek(e.target.value/1000*aD())};
+/* jumping with the bar: the bar and time follow the finger at once; the player gets at most one jump every
+   ~90ms while dragging (on iPhone a stream of jumps queues up and feels late), and the exact point on release */
+function paintAt(t){const d=aD();if(!(d>0)||!isFinite(d))return;const fr=Math.min(1,Math.max(0,t/d));dragUntil=Date.now()+1200;
+  $('cur').textContent=fmt(t);const mp=$('mprog');if(mp&&mp.firstChild)mp.firstChild.style.width=(fr*100)+'%';const fl=$('fill');if(fl)fl.style.width='calc(14px + (100% - 28px) * '+fr+')';
+  if(remote){const df=$('devfill'),dt=$('devtime');if(df)df.style.width=(fr*100)+'%';if(dt)dt.textContent=fmt(t)+' / '+fmt(d)}}
+let skT=0,skLast=0,skPend=null;
+function seekSoon(t,final){paintAt(t);const now=Date.now();if(final||now-skLast>=90){clearTimeout(skT);skT=0;skPend=null;skLast=now;aSeek(t);return}
+  skPend=t;if(!skT)skT=setTimeout(()=>{skT=0;if(skPend!=null){const v=skPend;skPend=null;skLast=Date.now();aSeek(v)}},90-(now-skLast))}
+$('range').oninput=e=>{if(aD())seekSoon(e.target.value/1000*aD())};
+$('range').addEventListener('change',e=>{if(aD())seekSoon(e.target.value/1000*aD(),true)});
 $('pp').onclick=()=>{if(curId)aP()?startPlay():au.pause();else{const l=qList();if(l[0]){curQ=l[0].e;loadItem(l[0].it);startPlay()}}};
 $('back').onclick=()=>{aSeek(Math.max(0,aT()-10))};
 $('fwd').onclick=()=>{aSeek(Math.min(aD()||0,aT()+10))};
@@ -2617,10 +2626,10 @@ $('devhere').onclick=pickSource;
  ['pointerdown','touchstart','mousedown'].forEach(ev=>rg.addEventListener(ev,()=>{dragUntil=Infinity},{passive:true}));
  ['pointerup','pointercancel','touchend','touchcancel','mouseup','change'].forEach(ev=>rg.addEventListener(ev,()=>{dragUntil=Date.now()+1200},{passive:true}));
  const n=$('devnow');let drag=false;
- const go=e=>{const r=n.getBoundingClientRect(),d=aD()||0;if(d>0){dragUntil=Date.now()+1500;aSeek(Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*d);paint()}};
+ const go=(e,fin)=>{const r=n.getBoundingClientRect(),d=aD()||0;if(d>0){dragUntil=Date.now()+1500;seekSoon(Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*d,fin)}};
  n.addEventListener('pointerdown',e=>{drag=true;try{n.setPointerCapture(e.pointerId)}catch(_){}go(e)});
  n.addEventListener('pointermove',e=>{if(drag)go(e)});
- ['pointerup','pointercancel'].forEach(ev=>n.addEventListener(ev,()=>{drag=false;dragUntil=Date.now()+1200}));}
+ n.addEventListener('pointerup',e=>{if(drag)go(e,true);drag=false;dragUntil=Date.now()+1200});n.addEventListener('pointercancel',()=>{drag=false;dragUntil=Date.now()+1200});}
 addEventListener('pagehide',()=>{if(isHost)rcRelease()});
 setInterval(()=>{if(remote){try{paint();devNow()}catch(e){}}},250);
 let idleSince=0;
@@ -2716,7 +2725,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=170;
+const APP_VER=171;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
