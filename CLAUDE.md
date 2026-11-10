@@ -41,7 +41,9 @@ instructions for GitHub/Firebase screens, and show previews before shipping visu
 - Check layout stability (no jumps while syncing), 44px touch targets, contrast >= 4.5:1,
   light + dark, 375px and landscape before shipping UI changes.
 - Workflow: develop on the session branch, open a PR, the owner merges (or asks Claude to merge).
-- In every reply that has a PR, put the GitHub link as the LAST line, clearly labeled (e.g. `🔗 לאישור ב-GitHub: <url>`), so the owner doesn't have to search for it.
+- PR link: only when it matters: a PR opened or updated in that reply, or one that is still waiting for the owner
+  and relevant to what is being discussed. Check its state before linking; never re-send a merged PR's link.
+  Put it as the LAST line, clearly labeled (e.g. `🔗 לאישור ב-GitHub: <url>`).
 
 ## Open thread
 - Audio storage server setup (ON HOLD, owner's progress as of 2026-11-10):
