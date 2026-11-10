@@ -736,6 +736,20 @@ body.iview #tabbar{display:none}
 .xcf ul{margin:8px 0 0;padding:0;list-style:none;max-height:30vh;overflow:auto}
 .xcf li{display:flex;flex-direction:column;padding:6px 0;border-top:.5px solid var(--hair);font-size:15px}
 .xcf li small{color:var(--muted);font-size:12.5px}
+/* הודעות */
+#errbar,#okbar{position:fixed;left:50%;z-index:130;display:flex;align-items:center;gap:10px;width:max-content;max-width:min(520px,calc(100vw - 24px));box-sizing:border-box;padding:11px 14px;border-radius:16px;font-size:14.5px;line-height:1.4;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:tIn .26s cubic-bezier(.2,.9,.3,1.15);transform:translateX(-50%)}
+#errbar{top:calc(env(safe-area-inset-top,0px) + 10px);background:#d70015;color:#fff}
+#okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 18px);background:color-mix(in srgb,var(--ink) 92%,transparent);color:var(--bg);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+body:not(.noplay) #okbar{bottom:calc(var(--dockh,150px) + 14px)}
+#errbar.out,#okbar.out{opacity:0;transition:opacity .2s,transform .2s}
+#errbar.out{transform:translate(-50%,-10px)}#okbar.out{transform:translate(-50%,10px)}
+@keyframes tIn{from{opacity:0;transform:translate(-50%,8px) scale(.96)}to{opacity:1;transform:translateX(-50%)}}
+#errbar .tic,#okbar .tic{flex:none;width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+#errbar .tic{background:rgba(255,255,255,.25)}
+#okbar .tic{background:#30d158;color:#fff}#okbar .tic svg{width:14px;height:14px;stroke-width:3}
+#errbar .ttx,#okbar .ttx{flex:1;min-width:0}
+#errbar .tx{flex:none;display:inline-flex;opacity:.85}#errbar .tx svg{width:16px;height:16px}
+@media (prefers-reduced-motion:reduce){#errbar,#okbar{animation:none}}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -864,8 +878,14 @@ function visible(){
 function chip(t,on,f){const b=document.createElement('button');b.className='chip'+(on?' on':'');b.textContent=t;b.onclick=e=>{if(Date.now()<lpSupp)return;f(e)};return b}
 function ico(t,f,on,label){const b=document.createElement('button');b.className='ico'+(on?' on':'');b.textContent=t;if(label)b.setAttribute('aria-label',label);b.onclick=f;return b}
 
-function showOk(m){showErr(m);const b=$('errbar');b.textContent=m;b.style.background='var(--accent)';clearTimeout(b._t);b._t=setTimeout(()=>{try{b.remove()}catch(e){}},4000)}
-function showErr(m){let b=$('errbar');if(!b){b=document.createElement('div');b.id='errbar';b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:100;background:var(--danger);color:#fff;padding:10px 14px;font-size:14px';b.onclick=()=>b.remove();document.body.appendChild(b)}b.textContent='⚠ '+m+' (לחץ לסגירה)'}
+/* הודעות: אדום למעלה רק לשגיאות (נשאר עד שלוחצים, ואז נעלם לגמרי). הצלחה/מידע: הודעה ניטרלית למטה שנעלמת לבד */
+function toastOut(b){if(!b||b.dataset.out)return;b.dataset.out=1;clearTimeout(b._t);b.classList.add('out');setTimeout(()=>{try{b.remove()}catch(e){}},220)}
+function showOk(m){let b=$('okbar');if(b){b.remove()}b=document.createElement('div');b.id='okbar';b.setAttribute('role','status');
+  b.innerHTML='<span class="tic">'+ICX.check+'</span><span class="ttx"></span>';b.lastChild.textContent=String(m).replace(/^✓\s*/,'');
+  b.onclick=()=>toastOut(b);document.body.appendChild(b);b._t=setTimeout(()=>toastOut(b),3800)}
+function showErr(m){let b=$('errbar');if(!b||b.dataset.out){if(b)b.remove();b=document.createElement('div');b.id='errbar';b.setAttribute('role','alert');
+    b.innerHTML='<span class="tic">!</span><span class="ttx"></span><span class="tx" aria-hidden="true">'+ICX.close+'</span>';b.onclick=()=>toastOut(b);document.body.appendChild(b)}
+  b.querySelector('.ttx').textContent=String(m).replace(/^⚠\s*/,'');b.setAttribute('aria-label',m+'. לחץ לסגירה')}
 $('pclose').onclick=()=>{au.pause();au.removeAttribute('src');curId=null;curQ=null;doneQ.clear();indQ=null;stopGap();setMin(true);$('player').hidden=true;pad();render()};
 $('pmin').onclick=()=>setMin(!$('player').classList.contains('min'));
 let sheetT=0;
@@ -1177,14 +1197,14 @@ function lpReorder(handle,unit,o){
     document.addEventListener('pointermove',mv);document.addEventListener('pointerup',up);document.addEventListener('pointercancel',up)}}
 let newCatName=null;
 async function clearCat(cat){const list=items.filter(i=>i.cat===cat);
-  if(!list.length){showErr('אין מוזיקות בקטגוריה "'+cat+'"');return}
+  if(!list.length){showOk('אין מוזיקות בקטגוריה "'+cat+'"');return}
   const a=await pick('למחוק את כל '+list.length+' המוזיקות בקטגוריה "'+cat+'"? הקבצים יימחקו לצמיתות מכל המכשירים, והקטגוריה עצמה תישאר.',[{t:'מחק את כל '+list.length+' המוזיקות',danger:true},{t:'ביטול',ghost:true}]);
   if(a!==0)return;
   const ids=new Set(list.map(i=>i.id));
   if(curId&&ids.has(curId)){au.pause();au.removeAttribute('src');curId=null;curQ=null;$('player').hidden=true;try{emptyPlayer();vBase=0;vAt=Date.now();rPlaying=false;sync();devNow();if(isHost)rcPub(true)}catch(e){}}
   list.forEach(it=>{try{URL.revokeObjectURL(urls[it.id])}catch(_){}delete urls[it.id];rm(it.id,it.asset,it.ac)});
   items=items.filter(i=>!ids.has(i.id));plist=plist.filter(x=>!ids.has(qid(x)));
-  saveLS();render();showErr('נמחקו '+list.length+' מוזיקות מהקטגוריה "'+cat+'"');{const b=$('errbar');if(b){b.style.background='var(--accent)';setTimeout(()=>{try{b.remove()}catch(e){}},4000)}}}
+  saveLS();render();showOk('נמחקו '+list.length+' מוזיקות מהקטגוריה "'+cat+'"')}
 let hiddenC=new Set();try{hiddenC=new Set(JSON.parse(localStorage.getItem('hiddenCats')||'[]'))}catch(e){}
 const vcats=()=>cats.filter(c=>!hiddenC.has(c)&&c!==INBOX);
 function saveHidden(){try{localStorage.setItem('hiddenCats',JSON.stringify([...hiddenC]))}catch(e){}}
@@ -1194,7 +1214,7 @@ function catManager(){return new Promise(res=>{const o=document.createElement('d
     const up=()=>{const hd=hiddenC.has(cat);b.style.opacity=hd?'.4':'1';st.textContent=hd?'מוסתרת':'מוצגת'};up();b.onclick=()=>{if(hiddenC.has(cat))hiddenC.delete(cat);else hiddenC.add(cat);saveHidden();up();dirty=true};b.append(n,st);return b};
   let dirty=false;cats.filter(k=>k!==INBOX).forEach(k=>c.appendChild(row(k)));
   const d=document.createElement('button');d.className='btn';d.style.cssText='display:block;width:100%;margin-top:12px';d.textContent='סיום';const close=()=>{o.remove();res(dirty)};d.onclick=close;o.onclick=e=>{if(e.target===o)close()};c.appendChild(d);o.appendChild(c);document.body.appendChild(o)})}
-function chipsRow(){tabsR();const C=$('chips');C.innerHTML='';[...vcats().map(c=>[c,c]),['\u0001add','＋'],['הכול','כל השירים']].forEach(([k,l])=>{
+function chipsRow(){tabsR();const C=$('chips');C.innerHTML='';[...vcats().map(c=>[c,c]),['\u0001add','＋'],['הכול','כל המוזיקות']].forEach(([k,l])=>{
     if(k==='\u0001add'){const a=chip(l,false,()=>$('newcat').click());a.classList.add('addc');a.setAttribute('aria-label','הוספת קטגוריה');C.appendChild(a);return}
     const ch=chip(l,k===filter,()=>{const sw=k!==filter&&cats.includes(k)&&cats.includes(filter);const dir=sw?(cats.indexOf(k)>cats.indexOf(filter)?-1:1):0;filter=k;if(cats.includes(k)){curCat=k;curSub='';if(sw)openK.clear()}render();if(sw){const L=$('list');L.style.setProperty('--sd',(dir*28)+'px');L.classList.remove('catswap');void L.offsetWidth;L.classList.add('catswap')}});
     if(k===newCatName){ch.classList.add('chipnew');newCatName=null}
@@ -1771,7 +1791,7 @@ $('zipf').onchange=async e=>{
         items.push(it);putBlob(it);put(it);toCloud(it);added++;zipNew.push(it)}catch(err){bad++}
       if(k%3===0)render();await new Promise(r=>setTimeout(r,0))}
     if(view!=='inbox'&&added>auto)setView('inbox');else render();
-    showErr('יובאו '+added+' שירים'+(auto?' · '+auto+' מוינו לבד לתיקיות':'')+(added-auto?' · '+(added-auto)+' ממתינים למיון':'')+(named?' · '+named+' בשם מההודעה שאחרי הקובץ':'')+(skipped?' · '+skipped+' כבר קיימים':'')+(bad?' · '+bad+' נכשלו':''));{const b=$('errbar');if(b&&!bad){b.style.background='var(--accent)';setTimeout(()=>{try{b.remove()}catch(e){}},5000)}}
+    {const msg='יובאו '+added+' שירים'+(auto?' · '+auto+' מוינו לבד לתיקיות':'')+(added-auto?' · '+(added-auto)+' ממתינים למיון':'')+(named?' · '+named+' בשם מההודעה שאחרי הקובץ':'')+(skipped?' · '+skipped+' כבר קיימים':'')+(bad?' · '+bad+' נכשלו':'');if(bad)showErr(msg);else showOk(msg)}
   }catch(err){showErr('הייבוא נכשל: '+((err&&err.message)||err))}
   stat()};
 $('inbtn').onclick=()=>setView(view==='inbox'?(preIn==='queue'?'queue':'music'):'inbox');
@@ -2390,7 +2410,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=155;
+const APP_VER=156;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
