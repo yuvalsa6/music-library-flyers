@@ -909,7 +909,7 @@ var RCX=null;const NVD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototyp
 function aT(){return RCX&&RCX.on()?RCX.pos():NTD.get.call(au)}
 function aD(){return RCX&&RCX.on()?RCX.dur():NDD.get.call(au)}
 function aP(){return RCX&&RCX.on()?RCX.paused():NPD.get.call(au)}
-function aSeek(t){if(RCX&&RCX.on())return RCX.seek(t);try{if(typeof duckSeek==='function')duckSeek()}catch(e){}try{NTD.set.call(au,t)}catch(e){}};au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true;
+function aSeek(t){if(RCX&&RCX.on())return RCX.seek(t);try{if(typeof routeSeek==='function'&&routeSeek(t))return;if(typeof duckSeek==='function')duckSeek()}catch(e){}try{NTD.set.call(au,t)}catch(e){}};au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true;
 const PL='תור תרגילים',INBOX='יבוא שירים';
 let db=null,items=[],cats=['נוער','לאומית'],plist=[],filter='קטגוריות',curCat='',curSub='',openK=new Set(),subF='',curId=null,teams=[],runs=[],gapDef=10,view='music',tDay='',gapT=null,D=null,A=null,folders=[],deep=false,stDirty=false,cl=false,addKey=null;
 let loopA=null,loopB=null,loopOn=false,counting=false,wl=null,ac=null;
@@ -2447,7 +2447,23 @@ let devName='';try{devName=localStorage.getItem('devname')||''}catch(e){}
 if(!devName){devName='מכשיר '+Math.random().toString(36).slice(2,5);try{localStorage.setItem('devname',devName)}catch(e){}}
 const rawPlay=au.play.bind(au),rawPause=au.pause.bind(au);
 const cts=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'currentTime');
-const rawSeek=t=>{duckSeek();try{cts.set.call(au,t)}catch(e){}};
+const rawSeek=t=>{if(routeSeek(t))return;duckSeek();try{cts.set.call(au,t)}catch(e){}};
+/* iPhone with the volume route: iOS keeps a few seconds of sound queued in the route, so a normal jump keeps
+   playing the old point for seconds. Instead: mute, reload the song (this empties the queue), jump, play,
+   and bring the sound back once the new point really plays. Repeated jumps meanwhile only move the target. */
+let rsBusy=false,rsT=0,rsTimer=0;
+function routeSeek(t){if(!(typeof gainOn!=='undefined'&&gainOn&&GN&&ACX&&typeof IOSV!=='undefined'&&IOSV))return false;
+  if(NPD.get.call(au)&&!rsBusy){/* paused: reload too (so nothing old is queued when it resumes), no playing */
+    const src0=au.getAttribute('src')||au.src;try{au.src=src0;au.addEventListener('loadedmetadata',()=>{try{cts.set.call(au,t)}catch(e){}},{once:true})}catch(e){try{cts.set.call(au,t)}catch(_){}}return true}
+  rsT=t;try{const n=ACX.currentTime;GN.gain.cancelScheduledValues(n);GN.gain.setValueAtTime(0,n)}catch(e){}
+  if(rsBusy){if(rsPhase==='settle')rsCycle();return true}
+  rsBusy=true;rsSrc=au.getAttribute('src')||au.src;rsRounds=0;rsCycle();return true}
+let rsPhase='',rsSrc='',rsRounds=0,rsUpT=0;
+function rsUp(){clearTimeout(rsTimer);clearTimeout(rsUpT);rsBusy=false;rsPhase='';try{const n=ACX.currentTime;GN.gain.cancelScheduledValues(n);GN.gain.setTargetAtTime(VOL,n,0.03)}catch(e){GN.gain.value=VOL}}
+function rsCycle(){clearTimeout(rsTimer);clearTimeout(rsUpT);rsTimer=setTimeout(rsUp,4000);rsPhase='load';let applied=rsT;
+  try{rawPause();au.src=rsSrc}catch(e){rsUp();return}
+  au.addEventListener('loadedmetadata',()=>{applied=rsT;try{cts.set.call(au,applied)}catch(e){}rawPlay().catch(()=>rsUp())},{once:true});
+  au.addEventListener('playing',()=>{if(Math.abs(rsT-applied)>0.3&&++rsRounds<6){rsCycle();return}rsPhase='settle';rsUpT=setTimeout(rsUp,250)},{once:true})}
 let duckT=0;function duckSeek(){if(!(typeof gainOn!=='undefined'&&gainOn&&GN&&ACX))return;try{const now=ACX.currentTime;GN.gain.cancelScheduledValues(now);GN.gain.setValueAtTime(0,now)}catch(e){return}
   clearTimeout(duckT);const up=()=>{clearTimeout(duckT);try{const n2=ACX.currentTime;GN.gain.cancelScheduledValues(n2);GN.gain.setTargetAtTime(VOL,n2,0.02)}catch(e){GN.gain.value=VOL}};
   au.addEventListener('seeked',()=>setTimeout(up,60),{once:true});duckT=setTimeout(up,900)}
@@ -2767,9 +2783,9 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=173;
+const APP_VER=174;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
