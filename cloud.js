@@ -105,8 +105,8 @@
       '#lcx .ok{background:var(--accent,#fa243c);color:#fff}#lcx .no{background:var(--soft,#eee);color:var(--ink,#000)}';
     const w = document.createElement('div');
     w.id = 'lcx';
-    w.innerHTML = '<div class="c"><h2>🔑 קוד ספרייה</h2><p>כדי לראות את השירים ולסנכרן בין מכשירים, הקלד את קוד הספרייה. מקבלים אותו ממי שמנהל את הספרייה.</p>' +
-      '<input autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX"><div class="e"></div>' +
+    w.innerHTML = '<div class="c"><h2>קוד ספרייה</h2><p>כדי לראות את השירים ולסנכרן בין מכשירים, הקלד את קוד הספרייה. מקבלים אותו ממי שמנהל את הספרייה.</p>' +
+      '<input aria-label="קוד ספרייה" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX"><div class="e"></div>' +
       '<button class="ok">המשך</button><button class="no">' + (canCancel ? 'ביטול' : 'המשך בלי ענן (רק במכשיר הזה)') + '</button></div>';
     document.body.appendChild(css);
     document.body.appendChild(w);
