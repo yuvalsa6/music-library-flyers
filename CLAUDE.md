@@ -43,5 +43,13 @@ instructions for GitHub/Firebase screens, and show previews before shipping visu
 - Workflow: develop on the session branch, open a PR, the owner merges (or asks Claude to merge).
 
 ## Open thread
+- Audio storage server setup (ON HOLD, owner's progress as of 2026-11-10):
+  done: Backblaze account (region US East), private bucket (Object Lock off), endpoint
+  `s3.us-east-005.backblazeb2.com`, Caps & Alerts set to $0, application key `audio-worker` (Read and Write,
+  that bucket only) created and saved by the owner.
+  next: Cloudflare account → Worker `audio-lib` (Hello World) → paste worker/audio-worker.js → add variables
+  B2_ENDPOINT, B2_BUCKET, B2_KEY_ID (secret), B2_APP_KEY (secret), LIB_CODES (secret) → test `/ping?k=<code>` →
+  owner sends the workers.dev URL → set AUDIO_HOST in config.js (AUDIO_MIGRATE=false) → test one song on two
+  devices → AUDIO_MIGRATE=true. Never ask for or write the keys or the library code.
 - New app icon: paused. Favored direction: a ♫ made of two acrobats (flyer in a handstand on the
   left note head, base standing on the right note head holding her foot; her leg is the beam).
