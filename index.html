@@ -828,6 +828,9 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
 #volbn{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 10px);z-index:131;max-width:calc(100vw - 24px);padding:12px 16px;border:0;border-radius:16px;background:var(--fill);color:#fff;font:inherit;font-size:15px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.25);cursor:pointer}
 .devvol.blk::after{content:'במכשיר המנגן צריך ללחוץ פעם אחת על ההודעה שעל המסך כדי לשלוט בעוצמה';flex:0 0 100%;order:9;font-size:12.5px;color:var(--muted);direction:rtl;text-align:start}
 .devvol.blk{flex-wrap:wrap}
+.wn ul{max-height:46vh}
+.wn li{flex-direction:row!important;gap:8px;align-items:flex-start;font-size:15px;line-height:1.45}
+.wn li::before{content:'';flex:none;width:7px;height:7px;margin-top:8px;border-radius:50%;background:var(--accent)}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -899,7 +902,7 @@ var RCX=null;const NVD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototyp
 function aT(){return RCX&&RCX.on()?RCX.pos():NTD.get.call(au)}
 function aD(){return RCX&&RCX.on()?RCX.dur():NDD.get.call(au)}
 function aP(){return RCX&&RCX.on()?RCX.paused():NPD.get.call(au)}
-function aSeek(t){if(RCX&&RCX.on())return RCX.seek(t);try{NTD.set.call(au,t)}catch(e){}};au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true;
+function aSeek(t){if(RCX&&RCX.on())return RCX.seek(t);try{if(typeof duckSeek==='function')duckSeek()}catch(e){}try{NTD.set.call(au,t)}catch(e){}};au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true;
 const PL='תור תרגילים',INBOX='יבוא שירים';
 let db=null,items=[],cats=['נוער','לאומית'],plist=[],filter='קטגוריות',curCat='',curSub='',openK=new Set(),subF='',curId=null,teams=[],runs=[],gapDef=10,view='music',tDay='',gapT=null,D=null,A=null,folders=[],deep=false,stDirty=false,cl=false,addKey=null;
 let loopA=null,loopB=null,loopOn=false,counting=false,wl=null,ac=null;
@@ -1582,6 +1585,15 @@ async function selAct(a){const list=items.filter(i=>selIds.has(i.id));if(!list.l
 /* מי הוסיף: שם המכשיר שהעלה (מוגדר בתפריט השליטה מרחוק) */
 function addedBy(){try{return(typeof devName==='string'&&devName)||localStorage.getItem('devname')||''}catch(e){return''}}
 function addedTxt(it){const p=[];if(it.by)p.push('נוסף ע״י '+it.by);if(it.added){try{p.push(new Date(it.added).toLocaleDateString('he-IL',{day:'numeric',month:'numeric',year:'2-digit'}))}catch(e){}}return p.join(' · ')}
+function whatsNew(){let seen=0;try{seen=+localStorage.getItem('seenVer')||0;localStorage.setItem('seenVer',String(APP_VER))}catch(e){return}
+  if(!seen||seen>=APP_VER)return;
+  const vs=Object.keys(CHANGES).map(Number).filter(v=>v>seen&&v<=APP_VER).sort((a,b)=>b-a).slice(0,6);
+  const show=()=>{if(document.querySelector('.pkov,#ask:not([hidden]),.nfov,#lcx'))return setTimeout(show,1500);
+    const h=document.createElement('div');h.className='xcf wn';const tt=document.createElement('b');tt.textContent='האפליקציה עודכנה לגרסה '+APP_VER;h.appendChild(tt);
+    if(vs.length){const ul=document.createElement('ul');vs.forEach(v=>CHANGES[v].forEach(x=>{const li=document.createElement('li');li.textContent=x;ul.appendChild(li)}));h.appendChild(ul)}
+    else{const sm=document.createElement('small');sm.textContent='שיפורים ותיקונים קטנים';h.appendChild(sm)}
+    pick('עדכון',[{t:'סגירה',ghost:true}],h)};
+  setTimeout(show,1200)}
 function artIc(isCur){return isCur&&!aP()?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
@@ -2415,7 +2427,10 @@ let devName='';try{devName=localStorage.getItem('devname')||''}catch(e){}
 if(!devName){devName='מכשיר '+Math.random().toString(36).slice(2,5);try{localStorage.setItem('devname',devName)}catch(e){}}
 const rawPlay=au.play.bind(au),rawPause=au.pause.bind(au);
 const cts=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'currentTime');
-const rawSeek=t=>{try{cts.set.call(au,t)}catch(e){}};
+const rawSeek=t=>{duckSeek();try{cts.set.call(au,t)}catch(e){}};
+let duckT=0;function duckSeek(){if(!(typeof gainOn!=='undefined'&&gainOn&&GN&&ACX))return;try{const now=ACX.currentTime;GN.gain.cancelScheduledValues(now);GN.gain.setValueAtTime(0,now)}catch(e){return}
+  clearTimeout(duckT);const up=()=>{clearTimeout(duckT);try{const n2=ACX.currentTime;GN.gain.cancelScheduledValues(n2);GN.gain.setTargetAtTime(VOL,n2,0.02)}catch(e){GN.gain.value=VOL}};
+  au.addEventListener('seeked',()=>setTimeout(up,60),{once:true});duckT=setTimeout(up,900)}
 let vBase=0,vAt=0;
 const vpos=()=>{const d=vdur();let t=vBase+(rPlaying?(Date.now()-vAt)/1000*(+$('spd').value||1):0);if(d>0)t=Math.min(t,d);return Math.max(0,t)};
 const ddesc=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'duration');
@@ -2426,7 +2441,14 @@ let optNav=0,optPlay=0,optSeek=0;
 const pdesc=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'paused');let rPlaying=false;
 Object.defineProperty(au,'paused',{configurable:true,get(){return remote?!rPlaying:pdesc.get.call(au)}});
 const npaused=()=>pdesc.get.call(au);
-RCX={on:()=>remote,pos:()=>vpos(),dur:()=>vdur()||NaN,paused:()=>!rPlaying,seek:t=>{optSeek=Date.now()+1500;vBase=t;vAt=Date.now();rawSeek(t);rcSend('seek',t);paint()}};
+/* after a jump from here, keep showing the new point until the playing device reports it (on an iPhone that
+   routes sound for remote volume, the jump can take a moment); give up after 6s */
+let seekWant=null;
+function seekOk(d){if(Date.now()<optSeek)return false;if(!seekWant)return true;
+  /* the jump has happened once the reported point is between the target and where it would be by now (even if late) */
+  const p=(d&&d.pos)||0,exp=seekWant.t+(d&&d.playing?(Date.now()-seekWant.at)/1000:0);
+  if((p>=seekWant.t-1&&p<=exp+1.5)||Date.now()-seekWant.at>6000){seekWant=null;return true}return false}
+RCX={on:()=>remote,pos:()=>vpos(),dur:()=>vdur()||NaN,paused:()=>!rPlaying,seek:t=>{seekWant={t,at:Date.now()};optSeek=Date.now()+1500;vBase=t;vAt=Date.now();rawSeek(t);rcSend('seek',t);paint()}};
 const setRP=v=>{v=!!v;if(rPlaying!==v){vBase=vpos();vAt=Date.now();rPlaying=v;if(remote){try{sync()}catch(e){}if(v&&!raf)raf=requestAnimationFrame(tick)}}};
 au.play=function(){if(remote){optPlay=Date.now()+800;setRP(true);rawPlay().catch(()=>{});rcSend('play');return Promise.resolve()}return rawPlay()};
 au.pause=function(){if(remote){optPlay=Date.now()+800;setRP(false);rawPause();rcSend('pause');return}rawPause()};
@@ -2542,7 +2564,7 @@ function follow(d){
   if(d&&typeof d.vol==='number'&&Date.now()>=optVol)volShow(d.vol);{const w=$('devvolw');if(w)w.classList.toggle('blk',!!(d&&d.vb))}
   if(Date.now()<optNav&&d.id!==curId)return;
   if(!d.id){setRP(false);if(curId){rawPause();au.removeAttribute('src');curId=null;curQ=null;doneQ.clear();indQ=null;$('player').hidden=true;try{emptyPlayer();vBase=0;vAt=Date.now()}catch(e){}render()}return}
-  if(Date.now()>=optSeek){vBase=d.pos||0;vAt=Date.now()}
+  if(seekOk(d)){vBase=d.pos||0;vAt=Date.now()}
   if(Date.now()>=optPlay)setRP(d.playing);
   const it=items.find(i=>i.id===d.id);if(!it){try{devNow();paint()}catch(e){}return}
   const q=d.q||null;let ch=false;
@@ -2553,7 +2575,7 @@ function follow(d){
   const la=d.la==null?null:d.la,lb=d.lb==null?null:d.lb,lo=!!d.lo;
   if(ch||la!==loopA||lb!==loopB||lo!==loopOn){loopA=la;loopB=lb;loopOn=lo;ui()}
   const tgt=(d.pos||0)+(d.playing?.3:0);
-  if(Date.now()>=optSeek){vBase=d.pos||0;vAt=Date.now();if(isFinite(tgt)&&Math.abs(cts.get.call(au)-tgt)>1.2)rawSeek(tgt)}
+  if(seekOk(d)){vBase=d.pos||0;vAt=Date.now();if(isFinite(tgt)&&Math.abs(cts.get.call(au)-tgt)>1.2)rawSeek(tgt)}
   if(ch||!$('dur').textContent||$('dur').textContent==='0:00')setTimeout(()=>{if(remote){$('dur').textContent=fmt(aD()||0);drawMarks();paint()}},250);
   if(Date.now()>=optPlay)setRP(d.playing);
   if(Date.now()<optPlay)return;
@@ -2725,7 +2747,18 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=171;
+const APP_VER=172;
+/* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
+const CHANGES={172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+  171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
+  170:['שינוי עוצמה מרחוק עובד באייפון'],
+  169:['שורת אבחון לעוצמה בשליטה מרחוק'],
+  168:['"לנגן כאן" ממשיך את אותו שיר מאותה נקודה, ולא עובר לשיר הבא'],
+  167:['רואים מי הוסיף כל מוזיקה (בתפריט ⋯)','לחיצה על המכשיר שאתה שולט בו מפסיקה את השליטה'],
+  166:['שליטה מרחוק מאייפון מראה את ההתקדמות ושולטת'],
+  164:['בוטלה ההצעה לפתוח תיקייה לצוות בזמן ייבוא'],
+  162:['בחירה מרובה: לחיצה ארוכה או "בחירה", גרירת אצבע על העיגולים, העברה / תור / מחיקה ביחד']};
+setTimeout(()=>{try{whatsNew()}catch(e){}},0);
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
