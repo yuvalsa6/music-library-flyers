@@ -801,6 +801,8 @@ body:not(.noplay):has(#player.min) #okbar{bottom:calc(var(--dockh,150px) + 14px)
 .tdd .fic{width:36px;height:36px;border-radius:10px}.tdd .fic svg{width:20px;height:20px}
 .xpr .fic{flex:none;width:40px;height:40px;border-radius:10px}.xpr .fic svg{width:22px;height:22px}
 .xpr small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#store .hping{border:0;background:var(--soft);color:var(--accent);font:inherit;font-weight:600;font-size:14px;border-radius:10px;padding:8px 12px;margin-top:8px;cursor:pointer}
+#store .hpr{font-size:13.5px}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -889,6 +891,7 @@ async function stat(){try{storeUI()}catch(e){}let p='';try{if(navigator.storage&
 let storeOpen=false,devEst=null,devEstT=0;
 const fmtMB=b=>b>=1073741824?(b/1073741824).toFixed(2)+'GB':b<10485760&&b>0?(b/1048576).toFixed(1)+'MB':Math.round(b/1048576)+'MB';
 function storeUI(){const w=$('store');if(!w)return;if(!D){w.hidden=true;return}w.hidden=false;
+  if(window.AUDIO_HOST)return storeUIHost(w);
   const cap=(window.CLOUD_CAP_MB||900)*1048576,inCloud=items.filter(i=>i.ac>0),used=inCloud.reduce((a,i)=>a+cBytes(i),0),left=Math.max(0,cap-used),pct=Math.min(100,used/cap*100);
   const per=inCloud.length?used/inCloud.length:3.5e6,more=Math.floor(left/per),notUp=items.filter(i=>!(i.ac>0)&&!i.asset).length;
   if(Date.now()-devEstT>60000&&navigator.storage&&navigator.storage.estimate){devEstT=Date.now();navigator.storage.estimate().then(e=>{devEst=e;storeUI()}).catch(()=>{})}
@@ -901,6 +904,20 @@ function storeUI(){const w=$('store');if(!w)return;if(!D){w.hidden=true;return}w
     '<br><span style="font-size:12px">המגבלה בענן היא '+fmtMB(cap)+' כדי להישאר בתוכנית החינמית של Firebase (1GB).</span></div>';
   if(w._h===html)return;w._h=html;w.innerHTML=html;
   w.querySelector('.sb').onclick=()=>{storeOpen=!storeOpen;storeUI()}}
+/* מד אחסון כשהשירים נשמרים בשרת (Backblaze) */
+function storeUIHost(w){
+  const cap=(window.AUDIO_CAP_GB||9.5)*1073741824,hs=items.filter(i=>String(i.asset||'').indexOf('b2:')===0),used=hs.reduce((a,i)=>a+(i.asz||(i.blob?i.blob.size:0)),0);
+  const left=Math.max(0,cap-used),pct=Math.min(100,used/cap*100),per=hs.length?used/hs.length:5.5e6,more=Math.floor(left/per);
+  const fsI=items.filter(i=>i.ac>0),fsUsed=fsI.reduce((a,i)=>a+cBytes(i),0),notUp=items.filter(i=>!(i.ac>0)&&!i.asset).length;
+  const html='<button class="sb" aria-expanded="'+storeOpen+'"><span class="sbt"><b>אחסון שירים:</b> '+fmtMB(used)+' מתוך '+fmtMB(cap)+' · נשארו '+fmtMB(left)+' (עוד כ-'+more+' שירים)<span class="sbm"><i class="'+(pct>=95?'full':pct>=80?'warn':'')+'" style="width:'+pct.toFixed(1)+'%"></i></span></span><span aria-hidden="true">'+(storeOpen?'▴':'▾')+'</span></button>'+
+    '<div class="sbd"'+(storeOpen?'':' hidden')+'>'+hs.length+' שירים בשרת האחסון (Backblaze)'+
+    (fsI.length?'<br>'+fsI.length+' שירים עדיין ב-Firebase ('+fmtMB(fsUsed)+')'+(window.AUDIO_MIGRATE?' · מועברים לשרת ברקע':' · יועברו לשרת אחרי שנפעיל את ההעברה'):'')+
+    (notUp?'<br>'+notUp+' שירים עדיין לא בענן (קיימים רק במכשיר שהעלה אותם)':'')+
+    '<br><button class="hping">בדיקת חיבור לשרת</button> <span class="hpr" aria-live="polite"></span></div>';
+  if(w._h===html)return;w._h=html;w.innerHTML=html;
+  w.querySelector('.sb').onclick=()=>{storeOpen=!storeOpen;storeUI()};
+  const pb=w.querySelector('.hping'),pr=w.querySelector('.hpr');
+  pb.onclick=async()=>{pr.textContent='בודק…';const r=await window.audioHostPing();pr.textContent=r&&r.ok?'✓ השרת מחובר ועובד':'✗ '+((r&&r.error)||'אין תשובה')}}
 function rm(id,asset,ac){if(D&&ac){for(let k=0;k<ac;k++){try{D.doc('audio/'+id+'_'+k).delete().catch(()=>{})}catch(e){}}}
   if(db){try{tx('readwrite').delete(id)}catch(e){}try{db.transaction('blobs','readwrite').objectStore('blobs').delete(id)}catch(e){}}
   if(D){D.doc('items/'+id).delete().catch(()=>{});if(asset&&asset.indexOf('drive')===0)drvTrash(asset,id);else if(asset&&A)A.delete(asset).catch(()=>{})}}
@@ -2092,7 +2109,7 @@ async function syncDown(){if(syncing||!D)return;syncing=true;
     await Promise.all(need.slice(0,4).map(async it=>{if(dlBusy.has(it.id)){while(dlBusy.has(it.id))await new Promise(r=>setTimeout(r,300))}else await fetchAudio(it,'bg');if(!it.blob){it._fail=true;it._failT=it._failT||Date.now()}}))}}catch(e){}
   dlTag='';syncing=false;stat();if(A&&items.some(i=>i.ac&&!i.asset&&i.blob)&&!upRt){upRt=1;syncUp().finally(()=>{upRt=0})}}
 const b64=u=>{let r='';for(let i=0;i<u.length;i+=0x8000)r+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(r)};
-const USE_AS=!!window.CLOUD_USE_STORAGE; /* Firebase Storage (אופציונלי, מוגדר ב-config.js). בלעדיו הקבצים נשמרים בחלקים ב-Firestore */
+const USE_AS=!!(window.CLOUD_USE_STORAGE||window.AUDIO_HOST),ASL=(window.AUDIO_HOST?90:20)*1048576-1024; /* Firebase Storage (אופציונלי, מוגדר ב-config.js). בלעדיו הקבצים נשמרים בחלקים ב-Firestore */
 /* כיווץ עותק הענן: mp3 מונו 64kbps (כ-1/4 מהגודל). העותק במכשיר המקורי נשאר ללא שינוי */
 let lamePr=null;
 function loadLame(){if(window.lamejs)return Promise.resolve(window.lamejs);if(lamePr)return lamePr;
@@ -2244,7 +2261,7 @@ async function getA(){if(!USE_AS)return null;if(A)return A;try{A=await Promise.r
 function asErr(m){if(asErrShown)return;asErrShown=true;showErr('העלאה לאחסון הקבצים נכשלה, עובר לשיטה הישנה: '+m)}
 async function toCloud(it){
   if(!D||!it.blob||it.ac||it.asset||upBusy.has(it.id))return;
-  if(it.blob.size>40*1048576){it.cloud='no';put(it);stat();render();return}
+  if(it.blob.size>(window.AUDIO_HOST?90:40)*1048576){it.cloud='no';put(it);stat();render();return}
   upBusy.add(it.id);
   if(it.blob.size<=16*1048576-1024&&await drvDirect()){
     if(Date.now()<drvBlock){upBusy.delete(it.id);return}
@@ -2253,9 +2270,9 @@ async function toCloud(it){
   }
   if(!A)await getA();
   if(!A&&USE_AS)asErr('אחסון הקבצים לא זמין במסך הזה');
-  if(A&&it.blob.size<=20*1048576-1024){
-    try{$('sv').textContent='☁ מעלה "'+it.name+'"…';const r=await A.upload(it.blob.type?it.blob:new Blob([it.blob],{type:MT[it.ext]||'audio/mpeg'}));
-      if(r&&r.id){it.asset=r.id;it.mime=it.blob.type||MT[it.ext]||'';delete it.cloud;it._upErr=0;put(it);if(localFull)goCloudOnly(it);upBusy.delete(it.id);stat();render();return}else asErr('תשובה ריקה')}catch(e){asErr((e&&(e.code||e.message))||String(e))}
+  if(A&&it.blob.size<=ASL){
+    try{$('sv').textContent='☁ מעלה "'+it.name+'"…';const r=await A.upload(it.blob.type?it.blob:new Blob([it.blob],{type:MT[it.ext]||'audio/mpeg'}),it.id);
+      if(r&&r.id){it.asset=r.id;it.asz=it.blob.size;it.mime=it.blob.type||MT[it.ext]||'';delete it.cloud;it._upErr=0;put(it);if(localFull)goCloudOnly(it);upBusy.delete(it.id);stat();render();return}else asErr('תשובה ריקה')}catch(e){asErr((e&&(e.code||e.message))||String(e))}
   }
   let src=it.blob,cq=false;
   if(false){try{$('sv').textContent='☁ מכווץ "'+it.name+'" לענן…';const c=await compressAudio(it.blob,p=>{$('sv').textContent='☁ מכווץ "'+it.name+'" '+Math.round(p*100)+'%'});if(c&&c.size>1000&&c.size<it.blob.size*0.85){src=c;cq=true}}catch(e){if(!window._cqErr){window._cqErr=1;showErr('כיווץ לענן לא זמין, מעלה את הקובץ המקורי: '+((e&&e.message)||e))}}}
@@ -2295,12 +2312,13 @@ const parts=new Array(it.ac);
   }catch(e){it._fail=true;it._failT=Date.now();if(auto!=='bg')showErr('טעינת "'+it.name+'" מהענן נכשלה: '+((e&&e.message)||''))}
   dlBusy.delete(it.id);stat()}
 const cloudChk=new Set();
-const needMig=i=>!!(A&&i.ac&&!i.asset&&i.dur!==undefined&&(!i.blob||i.blob.size<=20*1048576-1024));
+const needMig=i=>!!(A&&i.ac&&!i.asset&&i.dur!==undefined&&(!i.blob||i.blob.size<=ASL));
 async function migrate(it){
-  if(!A||!it.blob||!it.ac||it.asset||upBusy.has(it.id)||it.blob.size>20*1048576-1024)return;
+  if(!A||!it.blob||!it.ac||it.asset||upBusy.has(it.id)||it.blob.size>ASL)return;
+  if(window.AUDIO_HOST&&!window.AUDIO_MIGRATE)return;
   upBusy.add(it.id);const old=it.ac;
-  try{$('sv').textContent='☁ מעביר "'+it.name+'" לאחסון הקבצים…';const r=await A.upload(it.blob.type?it.blob:new Blob([it.blob],{type:MT[it.ext]||'audio/mpeg'}));
-    if(r&&r.id){it.asset=r.id;it.ac=0;it.mime=it.blob.type||MT[it.ext]||'';delete it.cloud;put(it);
+  try{$('sv').textContent='☁ מעביר "'+it.name+'" לשרת האחסון…';const r=await A.upload(it.blob.type?it.blob:new Blob([it.blob],{type:MT[it.ext]||'audio/mpeg'}),it.id);
+    if(r&&r.id){it.asset=r.id;it.asz=it.blob.size;it.ac=0;it.mime=it.blob.type||MT[it.ext]||'';delete it.cloud;put(it);
       for(let k=0;k<old;k++){try{D.doc('audio/'+it.id+'_'+k).delete().catch(()=>{})}catch(e){}}}}catch(e){}
   upBusy.delete(it.id);stat();render()}
 async function syncUp(){if(!D)return;if(!A)await getA();
@@ -2597,7 +2615,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=160;
+const APP_VER=161;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');

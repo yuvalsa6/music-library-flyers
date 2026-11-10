@@ -26,3 +26,15 @@ window.CLOUD_USE_STORAGE = false;
 
 /* מגבלת נפח לקבצים שנשמרים בתוך Firestore, במגה-בייט (התוכנית החינמית כוללת 1GB) */
 window.CLOUD_CAP_MB = 900;
+
+/* שרת אחסון שירים: Backblaze B2 (10GB חינם) דרך Cloudflare Worker. ההוראות ב-docs/audio-host.md.
+   ריק = כמו היום: השירים נשמרים בתוך Firestore.
+   כשממלאים כתובת (למשל "https://audio-lib.xxx.workers.dev") שירים חדשים נשמרים בשרת. */
+window.AUDIO_HOST = "";
+
+/* true = להעביר גם את השירים שכבר שמורים ב-Firestore לשרת, ולפנות את המקום שם.
+   להפעיל רק אחרי שבדקנו ששיר חדש עולה ומתנגן מהשרת. */
+window.AUDIO_MIGRATE = false;
+
+/* נפח השרת בג׳יגה (Backblaze נותן 10GB בחינם; משאירים מרווח) */
+window.AUDIO_CAP_GB = 9.5;

@@ -17,6 +17,10 @@ instructions for GitHub/Firebase screens, and show previews before shipping visu
   writes for audio chunks).
 - `config.js`: Firebase web config (public by design). `CLOUD_USE_STORAGE=false` (audio stored as
   bytes chunks in Firestore, 960KB pieces; older songs may be base64 strings, both are read).
+- Audio storage server (optional): `AUDIO_HOST` in config.js = a Cloudflare Worker (`worker/audio-worker.js`)
+  in front of a Backblaze B2 bucket; songs stored there get `asset:'b2:<itemId>'`. Empty AUDIO_HOST = old
+  behaviour (Firestore chunks). `AUDIO_MIGRATE=true` moves old chunk songs to the server. Setup: docs/audio-host.md.
+  Local test: run the worker in Node against a fake B2 (see scratchpad wk/serve.mjs pattern).
 - `sw.js`: service worker (network-first, `no-cache`); bump `CACHE` on every release.
 - `firestore.rules`: only `libs/{code}/{coll}/{doc}` with code length >= 14 is readable/writable.
 - `.github/workflows/pages.yml`: deploys to GitHub Pages on push to `main`.

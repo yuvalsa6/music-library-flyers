@@ -46,6 +46,11 @@
 - **Firebase Storage (`CLOUD_USE_STORAGE = true`)**: מתאים לספרייה גדולה. דורש תוכנית Blaze (עם מכסה חינמית). צריך להפעיל את Storage, להדביק את `storage.rules`, ולהגדיר CORS:
   `gsutil cors set storage-cors.json gs://<storageBucket>`
 
+### שרת אחסון שירים (10GB חינם)
+
+אפשר לשמור את קבצי השמע ב-Backblaze B2 דרך Cloudflare Worker (בלי התחברות לחשבון): ההוראות ב-[docs/audio-host.md](docs/audio-host.md).
+כל עוד `AUDIO_HOST` ב-`config.js` ריק, הקבצים נשמרים ב-Firestore כמו קודם.
+
 ## הבדלים מהגרסה בארטיפקט
 
 - **Google Drive**: החיבור לדרייב עבד דרך המחברים של Claude ואינו זמין מחוץ ל-Claude. הקבצים נשמרים עכשיו ב-Firebase.
