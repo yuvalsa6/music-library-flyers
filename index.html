@@ -801,6 +801,33 @@ body:not(.noplay):has(#player.min) #okbar{bottom:calc(var(--dockh,150px) + 14px)
 .tdd .fic{width:36px;height:36px;border-radius:10px}.tdd .fic svg{width:20px;height:20px}
 .xpr .fic{flex:none;width:40px;height:40px;border-radius:10px}.xpr .fic svg{width:22px;height:22px}
 .xpr small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#store .hping{border:0;background:var(--soft);color:var(--accent);font:inherit;font-weight:600;font-size:14px;border-radius:10px;padding:8px 12px;margin-top:8px;cursor:pointer}
+#store .hpr{font-size:13.5px}
+/* בחירה מרובה */
+.selck{display:none}
+body.selmode #list .selck{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:52px;margin-inline-end:-6px;touch-action:none;cursor:pointer;color:transparent}
+body.selmode #list .selck::before{content:'';position:absolute}
+body.selmode #list .selck svg{box-sizing:border-box;width:26px;height:26px;padding:4px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line);stroke-width:3;transition:background .12s,box-shadow .12s}
+body.selmode #list .item.picked .selck svg{background:var(--fill);box-shadow:none;color:#fff}
+body.selmode #list .item.picked .rowin{background:color-mix(in srgb,var(--accent) 8%,var(--bg))!important}
+body.selmode #list .item .qadd,body.selmode #list .item .more{display:none!important}
+body.selmode #list .swdel,body.selmode #list .swadd{display:none!important}
+body.selmode #list .item .rowin{-webkit-user-select:none;user-select:none}
+body.selmode #app{padding-bottom:calc(150px + env(safe-area-inset-bottom,0px))!important}
+body.selmode #player{display:none!important}
+body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!important}
+#selbar{position:fixed;left:8px;right:8px;bottom:calc(8px + env(safe-area-inset-bottom,0px));z-index:85;max-width:560px;margin:0 auto;background:var(--surface);border-radius:20px;padding:8px 10px 10px;box-shadow:0 10px 34px rgba(0,0,0,.22),0 0 0 .5px var(--hair);animation:shUp .28s cubic-bezier(.2,.9,.3,1.05)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #selbar{background:#1c1c1e}}
+#selbar .sbh{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+#selbar .sbn{flex:1;text-align:center;font-size:15.5px;font-weight:700}
+#selbar .sbh button{min-height:40px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:var(--accent);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+#selbar .sbx{font-weight:700!important}
+#selbar .sba{display:flex;gap:8px}
+#selbar .sba button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;border:0;border-radius:14px;background:var(--soft);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+#selbar .sba button svg{width:22px;height:22px;color:var(--accent)}
+#selbar .sba button.dz,#selbar .sba button.dz svg{color:var(--danger)}
+#selbar .sba button:disabled{opacity:.4;cursor:default}
+@media (prefers-reduced-motion:reduce){#selbar{animation:none}}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -889,6 +916,7 @@ async function stat(){try{storeUI()}catch(e){}let p='';try{if(navigator.storage&
 let storeOpen=false,devEst=null,devEstT=0;
 const fmtMB=b=>b>=1073741824?(b/1073741824).toFixed(2)+'GB':b<10485760&&b>0?(b/1048576).toFixed(1)+'MB':Math.round(b/1048576)+'MB';
 function storeUI(){const w=$('store');if(!w)return;if(!D){w.hidden=true;return}w.hidden=false;
+  if(window.AUDIO_HOST)return storeUIHost(w);
   const cap=(window.CLOUD_CAP_MB||900)*1048576,inCloud=items.filter(i=>i.ac>0),used=inCloud.reduce((a,i)=>a+cBytes(i),0),left=Math.max(0,cap-used),pct=Math.min(100,used/cap*100);
   const per=inCloud.length?used/inCloud.length:3.5e6,more=Math.floor(left/per),notUp=items.filter(i=>!(i.ac>0)&&!i.asset).length;
   if(Date.now()-devEstT>60000&&navigator.storage&&navigator.storage.estimate){devEstT=Date.now();navigator.storage.estimate().then(e=>{devEst=e;storeUI()}).catch(()=>{})}
@@ -901,6 +929,20 @@ function storeUI(){const w=$('store');if(!w)return;if(!D){w.hidden=true;return}w
     '<br><span style="font-size:12px">המגבלה בענן היא '+fmtMB(cap)+' כדי להישאר בתוכנית החינמית של Firebase (1GB).</span></div>';
   if(w._h===html)return;w._h=html;w.innerHTML=html;
   w.querySelector('.sb').onclick=()=>{storeOpen=!storeOpen;storeUI()}}
+/* מד אחסון כשהשירים נשמרים בשרת (Backblaze) */
+function storeUIHost(w){
+  const cap=(window.AUDIO_CAP_GB||9.5)*1073741824,hs=items.filter(i=>String(i.asset||'').indexOf('b2:')===0),used=hs.reduce((a,i)=>a+(i.asz||(i.blob?i.blob.size:0)),0);
+  const left=Math.max(0,cap-used),pct=Math.min(100,used/cap*100),per=hs.length?used/hs.length:5.5e6,more=Math.floor(left/per);
+  const fsI=items.filter(i=>i.ac>0),fsUsed=fsI.reduce((a,i)=>a+cBytes(i),0),notUp=items.filter(i=>!(i.ac>0)&&!i.asset).length;
+  const html='<button class="sb" aria-expanded="'+storeOpen+'"><span class="sbt"><b>אחסון שירים:</b> '+fmtMB(used)+' מתוך '+fmtMB(cap)+' · נשארו '+fmtMB(left)+' (עוד כ-'+more+' שירים)<span class="sbm"><i class="'+(pct>=95?'full':pct>=80?'warn':'')+'" style="width:'+pct.toFixed(1)+'%"></i></span></span><span aria-hidden="true">'+(storeOpen?'▴':'▾')+'</span></button>'+
+    '<div class="sbd"'+(storeOpen?'':' hidden')+'>'+hs.length+' שירים בשרת האחסון (Backblaze)'+
+    (fsI.length?'<br>'+fsI.length+' שירים עדיין ב-Firebase ('+fmtMB(fsUsed)+')'+(window.AUDIO_MIGRATE?' · מועברים לשרת ברקע':' · יועברו לשרת אחרי שנפעיל את ההעברה'):'')+
+    (notUp?'<br>'+notUp+' שירים עדיין לא בענן (קיימים רק במכשיר שהעלה אותם)':'')+
+    '<br><button class="hping">בדיקת חיבור לשרת</button> <span class="hpr" aria-live="polite"></span></div>';
+  if(w._h===html)return;w._h=html;w.innerHTML=html;
+  w.querySelector('.sb').onclick=()=>{storeOpen=!storeOpen;storeUI()};
+  const pb=w.querySelector('.hping'),pr=w.querySelector('.hpr');
+  pb.onclick=async()=>{pr.textContent='בודק…';const r=await window.audioHostPing();pr.textContent=r&&r.ok?'✓ השרת מחובר ועובד':'✗ '+((r&&r.error)||'אין תשובה')}}
 function rm(id,asset,ac){if(D&&ac){for(let k=0;k<ac;k++){try{D.doc('audio/'+id+'_'+k).delete().catch(()=>{})}catch(e){}}}
   if(db){try{tx('readwrite').delete(id)}catch(e){}try{db.transaction('blobs','readwrite').objectStore('blobs').delete(id)}catch(e){}}
   if(D){D.doc('items/'+id).delete().catch(()=>{});if(asset&&asset.indexOf('drive')===0)drvTrash(asset,id);else if(asset&&A)A.delete(asset).catch(()=>{})}}
@@ -1213,7 +1255,7 @@ function confirmPlay(n){return new Promise(res=>{
   c.append(row,t,s,ok,no);o.appendChild(c);document.body.appendChild(o)})}
 function attachSwipe2(rin,swL,onFullL,swR,onFullR){
   const W=88;let sx=0,sy=0,lock=false,dx=0,id=null,base=0;
-  rin.addEventListener('pointerdown',e=>{if(e.target.closest('[aria-label="גרור כדי לסדר"],input,select,textarea'))return;id=e.pointerId;sx=e.clientX;sy=e.clientY;lock=false;dx=0;base=(swOpen&&swOpen.rin===rin)?(swOpen.side||0)*W:0;rin.style.transition='none'});
+  rin.addEventListener('pointerdown',e=>{if(selMode||e.target.closest('[aria-label="גרור כדי לסדר"],input,select,textarea,.selck'))return;id=e.pointerId;sx=e.clientX;sy=e.clientY;lock=false;dx=0;base=(swOpen&&swOpen.rin===rin)?(swOpen.side||0)*W:0;rin.style.transition='none'});
   rin.addEventListener('pointermove',e=>{if(e.pointerId!==id)return;const x=e.clientX-sx,y=e.clientY-sy;
     if(!lock){if(Math.abs(x)>10&&Math.abs(x)>Math.abs(y)*1.4){lock=true;try{rin.setPointerCapture(id)}catch(_){}if(swOpen&&swOpen.rin!==rin)swClose()}else return}
     let v=base+x;if(!swR&&v<0)v=0;if(!swL&&v>0)v=0;const mx=rin.offsetWidth;v=Math.max(-mx,Math.min(mx,v));dx=v;
@@ -1349,6 +1391,7 @@ const ICN=(()=>{const sv=d=>'<svg viewBox="0 0 24 24" aria-hidden="true" fill="n
    broom:sv('<path d="M4 20l7-7M14 4l6 6-7 7-6-6z"/>'),
    lib:'<svg viewBox="0 0 24 24" aria-hidden="true" fill="currentColor"><path d="M9 17.5V6.2l10-2v11.3a3 3 0 1 1-2-2.8V7.8l-6 1.2v8.5a3 3 0 1 1-2-2.8z"/></svg>',
    chev:sv('<path d="M15 6l-6 6 6 6"/>'),
+   select:sv('<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.2l2.4 2.4 4.6-4.9"/>'),
    repeat:sv('<path d="M17 2.5l3 3-3 3"/><path d="M4 11.5v-2a4 4 0 0 1 4-4h12"/><path d="M7 21.5l-3-3 3-3"/><path d="M20 12.5v2a4 4 0 0 1-4 4H4"/>'),
    speaker:sv('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>'),
    device:sv('<rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M11 18.5h2"/>'),check:sv('<path d="M5 12.5l4.5 4.5L19 7.5"/>')}})();
@@ -1470,6 +1513,64 @@ function existingPicker(cat,p){const where=p?p.split(' / ').pop():cat;
     curCat=cat;curSub=p;if(p){const sg=p.split(' / ');for(let k=1;k<=sg.length;k++)openK.add(cat+'||'+sg.slice(0,k).join(' / '))}render();
     showOk('✓ '+(go.length===1?'מוזיקה אחת נוספה':go.length+' מוזיקות נוספו')+' ל"'+where+'"')};
   c.append(g,ok,x);o.appendChild(c);document.body.appendChild(o)}
+/* ===== בחירה מרובה: בוחרים כמה מוזיקות ומעבירים / מוסיפים לתור / מוחקים ביחד =====
+   נכנסים בלחיצה ארוכה על מוזיקה או בכפתור "בחירה". גרירת האצבע על העיגולים בוחרת כמה ברצף */
+let selMode=false;const selIds=new Set();
+function selRows(){return[...document.querySelectorAll('#list .item[data-iid]')].filter(r=>!r.dataset.q||filter!==PL)}
+function selStart(firstId){if(filter===PL)return;swClose();selMode=true;selIds.clear();if(firstId)selIds.add(firstId);document.body.classList.add('selmode');render();selBar();
+  try{if(!localStorage.getItem('selTip')){localStorage.setItem('selTip','1');setTimeout(()=>showOk('טיפ: אפשר לגרור את האצבע על העיגולים כדי לבחור כמה ברצף'),400)}}catch(e){}}
+function selEnd(){selMode=false;selIds.clear();document.body.classList.remove('selmode');const b=$('selbar');if(b)b.remove();render()}
+function selPaint(){selRows().forEach(r=>r.classList.toggle('picked',selIds.has(r.dataset.iid)));selBar()}
+function selToggle(id,on){if(on===undefined)on=!selIds.has(id);on?selIds.add(id):selIds.delete(id)}
+function selLP(rin,it){let t=0,sx=0,sy=0;const stop=()=>{clearTimeout(t);t=0};
+  rin.addEventListener('pointerdown',e=>{if(selMode||filter===PL||e.button>0||e.target.closest('button,select,input,label'))return;sx=e.clientX;sy=e.clientY;stop();
+    t=setTimeout(()=>{t=0;lastSwipe=Date.now();if(navigator.vibrate)try{navigator.vibrate(12)}catch(_){}selStart(it.id)},480)});
+  rin.addEventListener('pointermove',e=>{if(t&&Math.hypot(e.clientX-sx,e.clientY-sy)>8)stop()});
+  ['pointerup','pointercancel','pointerleave'].forEach(n=>rin.addEventListener(n,stop));rin.addEventListener('contextmenu',e=>{if(!selMode)e.preventDefault()})}
+/* הקשה על שורה במצב בחירה: מסמנת במקום לנגן */
+document.addEventListener('click',e=>{if(!selMode)return;const r=e.target.closest&&e.target.closest('#list .item[data-iid]');if(!r)return;
+  e.preventDefault();e.stopPropagation();if(Date.now()<selDragEnd)return;selToggle(r.dataset.iid);selPaint()},true);
+document.addEventListener('keydown',e=>{if(selMode&&e.key==='Escape')selEnd()});
+/* גרירה על העיגולים: בוחרת (או מבטלת) את כל השורות שהאצבע עוברת עליהן */
+let selDragEnd=0;
+document.addEventListener('pointerdown',e=>{if(!selMode)return;const ck=e.target.closest&&e.target.closest('#list .selck');if(!ck)return;
+  const rows=selRows(),r0=ck.closest('.item'),i0=rows.indexOf(r0);if(i0<0)return;e.preventDefault();
+  const snap=new Set(selIds),mode=!selIds.has(r0.dataset.iid),pid=e.pointerId;let last=i0,lastY=e.clientY,raf=0,moved=false;
+  const A=$('app');
+  const apply=i=>{if(i<0)return;last=i;const lo=Math.min(i0,i),hi=Math.max(i0,i);selIds.clear();snap.forEach(x=>selIds.add(x));for(let k=lo;k<=hi;k++)selToggle(rows[k].dataset.iid,mode);selPaint()};
+  const at=y=>{const ar=A.getBoundingClientRect(),sb=$('selbar'),lo=ar.top+4,hi=(sb?sb.getBoundingClientRect().top:Math.min(ar.bottom,innerHeight))-4;y=Math.max(lo,Math.min(hi,y));
+    const el=document.elementFromPoint(r0.getBoundingClientRect().left+r0.offsetWidth/2,y);const r=el&&el.closest&&el.closest('#list .item[data-iid]');return r?rows.indexOf(r):-1};
+  const edge=()=>{raf=0;if(!A)return;const ar=A.getBoundingClientRect(),bot=$('selbar')?$('selbar').getBoundingClientRect().top:Math.min(ar.bottom,innerHeight),z=60;let v=0;
+    if(lastY<ar.top+z+60)v=-Math.ceil((ar.top+z+60-lastY)/6);else if(lastY>bot-z)v=Math.ceil((lastY-(bot-z))/6);
+    if(v){A.scrollTop+=v;const i=at(lastY);if(i>=0)apply(i);raf=requestAnimationFrame(edge)}};
+  apply(i0);
+  const mv=ev=>{if(ev.pointerId!==pid)return;ev.preventDefault();moved=true;lastY=ev.clientY;const i=at(ev.clientY);if(i>=0&&i!==last)apply(i);if(!raf)raf=requestAnimationFrame(edge)};
+  const up=ev=>{if(ev.pointerId!==pid)return;removeEventListener('pointermove',mv,true);removeEventListener('pointerup',up,true);removeEventListener('pointercancel',up,true);cancelAnimationFrame(raf);raf=0;selDragEnd=Date.now()+350};
+  addEventListener('pointermove',mv,{capture:true,passive:false});addEventListener('pointerup',up,true);addEventListener('pointercancel',up,true)},true);
+function selBar(){if(!selMode)return;let b=$('selbar');
+  if(!b){b=document.createElement('div');b.id='selbar';b.setAttribute('role','toolbar');b.setAttribute('aria-label','פעולות על המוזיקות שנבחרו');
+    b.innerHTML='<div class="sbh"><button class="sbx">סיום</button><b class="sbn" aria-live="polite"></b><button class="sball"></button></div>'+
+      '<div class="sba"><button data-a="move">'+ICN.fmove+'<span>העברה לתיקייה</span></button><button data-a="queue">'+ICN.qadd+'<span>הוספה לתור</span></button><button data-a="del" class="dz">'+ICN.trash+'<span>מחיקה</span></button></div>';
+    b.querySelectorAll('button').forEach(x=>x.dataset.ic=x.textContent);
+    b.querySelector('.sbx').onclick=selEnd;
+    b.querySelector('.sball').onclick=()=>{const ids=selRows().map(r=>r.dataset.iid),all=ids.length&&ids.every(i=>selIds.has(i));ids.forEach(i=>selToggle(i,!all));selPaint()};
+    b.querySelectorAll('.sba button').forEach(x=>x.onclick=()=>selAct(x.dataset.a));
+    document.body.appendChild(b)}
+  const n=selIds.size,ids=selRows().map(r=>r.dataset.iid),all=ids.length&&ids.every(i=>selIds.has(i));
+  b.querySelector('.sbn').textContent=n?(n===1?'מוזיקה אחת נבחרה':n+' מוזיקות נבחרו'):'בחר מוזיקות';
+  b.querySelector('.sball').textContent=all?'ניקוי הבחירה':'בחירת הכול';
+  b.querySelectorAll('.sba button').forEach(x=>x.disabled=!n)}
+async function selAct(a){const list=items.filter(i=>selIds.has(i.id));if(!list.length)return;const n=list.length,w=n===1?'מוזיקה אחת':n+' מוזיקות';
+  if(a==='move'){const r=await folderPicker('להעביר '+w+' לאיפה?',null);if(!r)return;list.forEach(it=>{it.cat=r.cat;it.sub=r.sub;put(it)});
+    if(r.sub){const sg=r.sub.split(' / ');for(let k=1;k<=sg.length;k++)openK.add(r.cat+'||'+sg.slice(0,k).join(' / '))}
+    selEnd();showOk(w+' הועברו ל"'+(r.sub?r.sub.split(' / ').pop():r.cat)+'"')}
+  if(a==='queue'){const order=selRows().map(r=>r.dataset.iid).filter(i=>selIds.has(i));order.forEach(id=>plist.push(id+'~'+Math.random().toString(36).slice(2,7)));saveLS();selEnd();
+    showOk(w+' נוספו לתור');const tb=[...document.querySelectorAll('#tabs .chip')].find(c=>c.textContent.includes(PL));if(tb){tb.classList.remove('bump');void tb.offsetWidth;tb.classList.add('bump')}}
+  if(a==='del'){const h=document.createElement('div');h.className='xcf';const tt=document.createElement('b');tt.textContent='למחוק '+w+'?';const sb=document.createElement('small');sb.textContent='הקבצים יימחקו לצמיתות מכל המכשירים ומהענן. אי אפשר לשחזר.';h.append(tt,sb);
+    const ul=document.createElement('ul');list.slice(0,6).forEach(i=>{const li=document.createElement('li');const nm=document.createElement('span');nm.textContent=i.name;const l=document.createElement('small');l.textContent=locStr(i.cat,i.sub);li.append(nm,l);ul.appendChild(li)});
+    if(n>6){const li=document.createElement('li');li.textContent='ועוד '+(n-6)+'…';ul.appendChild(li)}h.appendChild(ul);
+    const k=await pick('מחיקה',[{t:'מחיקת '+w,ic:'trash',danger:true},{t:'ביטול',ghost:true}],h);if(k!==0)return;
+    list.forEach(it=>{try{delItem(it)}catch(e){}});selEnd();showOk(w+' נמחקו')}}
 function artIc(isCur){return isCur&&!au.paused?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
@@ -1578,7 +1679,8 @@ function catView(L,cat){
   const a=document.createElement('div');a.className='acts tb';
   const ns=document.createElement('button');ns.className='sm';ns.innerHTML=TBI.folder+'<span>תיקייה חדשה</span>';ns.onclick=()=>newFolderDialog(cat,'');
   const ad=document.createElement('button');ad.className='sm';ad.innerHTML=TBI.add+'<span>הוספת מוזיקות</span>';ad.dataset.ic=ad.textContent;ad.onclick=()=>addMusic(cat,'');
-  a.append(ns,ad);L.appendChild(a);if(addKey===cat+'||')L.appendChild(addRow(cat,'','0px'));
+  const sl=document.createElement('button');sl.className='sm';sl.innerHTML=ICN.select+'<span>בחירה</span>';sl.dataset.ic=sl.textContent;sl.onclick=()=>selStart();
+  a.append(ns,ad,sl);L.appendChild(a);if(addKey===cat+'||')L.appendChild(addRow(cat,'','0px'));
   const ks=kids(cat,''),rs=items.filter(i=>i.cat===cat&&!i.sub);
   ks.forEach(k=>folderRow(L,cat,k,0,k));rs.forEach(it=>mkRow(it,L));
   if(!ks.length&&!rs.length){const e=document.createElement('div');e.className='empty';e.innerHTML='<div class="ei">'+ICX.note+'</div><b>הקטגוריה ריקה</b><span>אפשר להוסיף מוזיקות או ליצור תיקייה עם הכפתורים למעלה</span>';L.appendChild(e)}}
@@ -1652,6 +1754,7 @@ function mkRow(it,L,qe){
   rin.addEventListener('click',e=>{if(Date.now()-lastSwipe<400)return;if(swOpen&&swOpen.rin===rin){swClose();return}if(e.target.closest('button,select,input,textarea,label,.acts,[aria-label="גרור כדי לסדר"]'))return;toggle(it,qe)});
   const mo=document.createElement('button');mo.className='more';mo.innerHTML=ICX.more;mo.dataset.ic=mo.textContent;mo.setAttribute('aria-label','פעולות לשיר');mo.onclick=()=>itemMenu(it,qe,d,qb);
   const qb=document.createElement('button');qb.className='qadd';qb.textContent='＋';qb.setAttribute('aria-label','הוסף לתור');qb.onclick=()=>addQ(it,qb);
+  if(!qe||filter!==PL){const ck=document.createElement('span');ck.className='selck';ck.setAttribute('aria-hidden','true');ck.innerHTML=ICN.check;rin.insertBefore(ck,rin.firstChild);d.classList.toggle('picked',selIds.has(it.id));selLP(rin,it)}
   if(filter===PL){const h=document.createElement('div');h.textContent='☰';h.setAttribute('aria-label','גרור כדי לסדר');h.style.cssText='touch-action:none;cursor:grab;font-size:24px;padding:6px 8px;color:var(--muted);user-select:none';dragInit3(h,d);rin.append(h,p,m,mo,a)}else rin.append(p,m,qb,mo,a);d.append(sw,rin);if(!inQ)d.insertBefore(swr,rin);
   L.appendChild(d)}
 function mv(id,dir){const i=plist.indexOf(id),j=i+dir;if(j<0||j>=plist.length)return;[plist[i],plist[j]]=[plist[j],plist[i]];saveLS();render()}
@@ -2057,7 +2160,7 @@ function tabsR(){const T=$('tabs');T.innerHTML='';[['music','ספרייה'],['qu
   const ni=items.filter(i=>i.cat===INBOX).length,bd=document.querySelector('#inbtn .bdg');if(bd){bd.hidden=!ni;bd.textContent=ni>99?'99+':ni;$('inbtn').setAttribute('aria-label','יבוא מוואטסאפ'+(ni?' · '+ni+' ממתינים למיון':''));$('inbtn').classList.toggle('on',view==='inbox')}}
 let preIn='music';
 let libSt=null,scrollSt={music:0,queue:0};
-function setView(v){const prev=view;if(prev===v)return;if(v==='inbox')preIn=prev;
+function setView(v){const prev=view;if(prev===v)return;if(selMode)selEnd();if(v==='inbox')preIn=prev;
   try{if(prev!=='inbox')scrollSt[prev==='queue'?'queue':'music']=$('app').scrollTop}catch(e){}
   if(v==='queue'&&filter!==PL)libSt={filter,curCat,curSub};
   view=v;document.body.classList.toggle('qview',v==='queue');document.body.classList.toggle('iview',v==='inbox');$('vmusic').hidden=false;$('vtrack').hidden=true;
@@ -2092,7 +2195,7 @@ async function syncDown(){if(syncing||!D)return;syncing=true;
     await Promise.all(need.slice(0,4).map(async it=>{if(dlBusy.has(it.id)){while(dlBusy.has(it.id))await new Promise(r=>setTimeout(r,300))}else await fetchAudio(it,'bg');if(!it.blob){it._fail=true;it._failT=it._failT||Date.now()}}))}}catch(e){}
   dlTag='';syncing=false;stat();if(A&&items.some(i=>i.ac&&!i.asset&&i.blob)&&!upRt){upRt=1;syncUp().finally(()=>{upRt=0})}}
 const b64=u=>{let r='';for(let i=0;i<u.length;i+=0x8000)r+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(r)};
-const USE_AS=!!window.CLOUD_USE_STORAGE; /* Firebase Storage (אופציונלי, מוגדר ב-config.js). בלעדיו הקבצים נשמרים בחלקים ב-Firestore */
+const USE_AS=!!(window.CLOUD_USE_STORAGE||window.AUDIO_HOST),ASL=(window.AUDIO_HOST?90:20)*1048576-1024; /* Firebase Storage (אופציונלי, מוגדר ב-config.js). בלעדיו הקבצים נשמרים בחלקים ב-Firestore */
 /* כיווץ עותק הענן: mp3 מונו 64kbps (כ-1/4 מהגודל). העותק במכשיר המקורי נשאר ללא שינוי */
 let lamePr=null;
 function loadLame(){if(window.lamejs)return Promise.resolve(window.lamejs);if(lamePr)return lamePr;
@@ -2244,7 +2347,7 @@ async function getA(){if(!USE_AS)return null;if(A)return A;try{A=await Promise.r
 function asErr(m){if(asErrShown)return;asErrShown=true;showErr('העלאה לאחסון הקבצים נכשלה, עובר לשיטה הישנה: '+m)}
 async function toCloud(it){
   if(!D||!it.blob||it.ac||it.asset||upBusy.has(it.id))return;
-  if(it.blob.size>40*1048576){it.cloud='no';put(it);stat();render();return}
+  if(it.blob.size>(window.AUDIO_HOST?90:40)*1048576){it.cloud='no';put(it);stat();render();return}
   upBusy.add(it.id);
   if(it.blob.size<=16*1048576-1024&&await drvDirect()){
     if(Date.now()<drvBlock){upBusy.delete(it.id);return}
@@ -2253,9 +2356,9 @@ async function toCloud(it){
   }
   if(!A)await getA();
   if(!A&&USE_AS)asErr('אחסון הקבצים לא זמין במסך הזה');
-  if(A&&it.blob.size<=20*1048576-1024){
-    try{$('sv').textContent='☁ מעלה "'+it.name+'"…';const r=await A.upload(it.blob.type?it.blob:new Blob([it.blob],{type:MT[it.ext]||'audio/mpeg'}));
-      if(r&&r.id){it.asset=r.id;it.mime=it.blob.type||MT[it.ext]||'';delete it.cloud;it._upErr=0;put(it);if(localFull)goCloudOnly(it);upBusy.delete(it.id);stat();render();return}else asErr('תשובה ריקה')}catch(e){asErr((e&&(e.code||e.message))||String(e))}
+  if(A&&it.blob.size<=ASL){
+    try{$('sv').textContent='☁ מעלה "'+it.name+'"…';const r=await A.upload(it.blob.type?it.blob:new Blob([it.blob],{type:MT[it.ext]||'audio/mpeg'}),it.id);
+      if(r&&r.id){it.asset=r.id;it.asz=it.blob.size;it.mime=it.blob.type||MT[it.ext]||'';delete it.cloud;it._upErr=0;put(it);if(localFull)goCloudOnly(it);upBusy.delete(it.id);stat();render();return}else asErr('תשובה ריקה')}catch(e){asErr((e&&(e.code||e.message))||String(e))}
   }
   let src=it.blob,cq=false;
   if(false){try{$('sv').textContent='☁ מכווץ "'+it.name+'" לענן…';const c=await compressAudio(it.blob,p=>{$('sv').textContent='☁ מכווץ "'+it.name+'" '+Math.round(p*100)+'%'});if(c&&c.size>1000&&c.size<it.blob.size*0.85){src=c;cq=true}}catch(e){if(!window._cqErr){window._cqErr=1;showErr('כיווץ לענן לא זמין, מעלה את הקובץ המקורי: '+((e&&e.message)||e))}}}
@@ -2295,12 +2398,13 @@ const parts=new Array(it.ac);
   }catch(e){it._fail=true;it._failT=Date.now();if(auto!=='bg')showErr('טעינת "'+it.name+'" מהענן נכשלה: '+((e&&e.message)||''))}
   dlBusy.delete(it.id);stat()}
 const cloudChk=new Set();
-const needMig=i=>!!(A&&i.ac&&!i.asset&&i.dur!==undefined&&(!i.blob||i.blob.size<=20*1048576-1024));
+const needMig=i=>!!(A&&i.ac&&!i.asset&&i.dur!==undefined&&(!i.blob||i.blob.size<=ASL));
 async function migrate(it){
-  if(!A||!it.blob||!it.ac||it.asset||upBusy.has(it.id)||it.blob.size>20*1048576-1024)return;
+  if(!A||!it.blob||!it.ac||it.asset||upBusy.has(it.id)||it.blob.size>ASL)return;
+  if(window.AUDIO_HOST&&!window.AUDIO_MIGRATE)return;
   upBusy.add(it.id);const old=it.ac;
-  try{$('sv').textContent='☁ מעביר "'+it.name+'" לאחסון הקבצים…';const r=await A.upload(it.blob.type?it.blob:new Blob([it.blob],{type:MT[it.ext]||'audio/mpeg'}));
-    if(r&&r.id){it.asset=r.id;it.ac=0;it.mime=it.blob.type||MT[it.ext]||'';delete it.cloud;put(it);
+  try{$('sv').textContent='☁ מעביר "'+it.name+'" לשרת האחסון…';const r=await A.upload(it.blob.type?it.blob:new Blob([it.blob],{type:MT[it.ext]||'audio/mpeg'}),it.id);
+    if(r&&r.id){it.asset=r.id;it.asz=it.blob.size;it.ac=0;it.mime=it.blob.type||MT[it.ext]||'';delete it.cloud;put(it);
       for(let k=0;k<old;k++){try{D.doc('audio/'+it.id+'_'+k).delete().catch(()=>{})}catch(e){}}}}catch(e){}
   upBusy.delete(it.id);stat();render()}
 async function syncUp(){if(!D)return;if(!A)await getA();
@@ -2597,7 +2701,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=160;
+const APP_VER=162;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');

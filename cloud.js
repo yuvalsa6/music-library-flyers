@@ -73,7 +73,34 @@
     };
   }
 
-  window.assetUrl = (a) => a;
+  /* שרת אחסון שירים (Backblaze דרך Cloudflare Worker), רק כש-AUDIO_HOST מוגדר ב-config.js.
+     כל שיר נשמר שם עם מזהה, ובספרייה נשמר "b2:<מזהה>". הקוד נשלח לשרת, והשרת עונה רק לקוד מורשה. */
+  const HOST = String(window.AUDIO_HOST || '').trim().replace(/\/+$/, '');
+  const hostUrl = (id) => HOST + '/a/' + id + '?k=' + encodeURIComponent(code);
+  function hostAssets() {
+    return {
+      async upload(blob, itemId) {
+        /* the song's own id: an accidental second upload overwrites the same file instead of leaving a copy */
+        const id = /^[A-Za-z0-9]{6,40}$/.test(itemId || '') ? itemId : Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+        const r = await fetch(hostUrl(id), { method: 'PUT', headers: { 'Content-Type': blob.type || 'audio/mpeg' }, body: blob });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.ok) throw new Error('שרת האחסון: ' + (j.error || r.status));
+        if (j.size !== blob.size) throw new Error('שרת האחסון: הקובץ לא נשמר במלואו');
+        return { id: 'b2:' + id };
+      },
+      async delete(a) {
+        if (String(a).indexOf('b2:') === 0) await fetch(hostUrl(String(a).slice(3)), { method: 'DELETE' });
+      },
+    };
+  }
+  window.AUDIO_HOST_ON = !!HOST;
+  window.audioHostPing = async () => {
+    if (!HOST) return { ok: false, error: 'AUDIO_HOST ריק' };
+    try { const r = await fetch(HOST + '/ping?k=' + encodeURIComponent(code)); return await r.json(); }
+    catch (e) { return { ok: false, error: String((e && e.message) || e) }; }
+  };
+
+  window.assetUrl = (a) => (String(a).indexOf('b2:') === 0 && HOST ? hostUrl(String(a).slice(3)) : a);
 
   /* data: base64 string of the chunk.
      Fast parallel write of one audio chunk through the Firestore REST API.
@@ -157,7 +184,7 @@
         const fs = firebase.firestore();
         return { doc: (p) => fs.doc(prefix() + p), collection: (p) => fs.collection(prefix() + p) };
       }
-      if (name === 'assets') return window.CLOUD_USE_STORAGE ? assets() : null;
+      if (name === 'assets') return HOST ? hostAssets() : window.CLOUD_USE_STORAGE ? assets() : null;
       return null;
     },
   };
