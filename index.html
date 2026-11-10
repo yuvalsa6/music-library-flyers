@@ -1627,16 +1627,19 @@ async function checkUpdate(out){out('בודק…');let latest=0;
    באייפון עוצמה מתחת ל-100% עוברת דרך מערכת השמע של iOS ומאטה את התגובה; ב-100% אפשר להחזיר תגובה מיידית (טעינה מחדש) */
 function lvolShow(){const e=$('lvol');if(!e)return;const v=Math.round(VOL*100);if(document.activeElement!==e)e.value=String(v);$('lvolt').textContent=v+'%';
   const fx=$('lvfix');if(fx)fx.hidden=true;
-  const w=$('lvolw');if(w)w.hidden=!!(typeof IOSV!=='undefined'&&IOSV&&!(gainOn&&lastRemoteT&&Date.now()-lastRemoteT<60000))}
+  const w=$('lvolw');if(w)w.hidden=!!(typeof IOSV!=='undefined'&&IOSV&&!(gainOn&&!routeReset))}
 {const e=$('lvol');if(e){e.addEventListener('input',()=>{const v=(+e.value)/100;$('lvolt').textContent=Math.round(v*100)+'%';applyVol(v);if(isHost)rcPub(true);lvolShow()})}}
 setInterval(lvolShow,1000);setTimeout(lvolShow,500);
 /* iPhone: the slower sound route is used only while another device controls this one.
-   When control ends: volume back to 100% (only the side buttons), and the next time the app goes to the
+   The volume set remotely stays (also when the controlling phone is locked or offline).
+   When control is ended on purpose ('bye'): volume back to 100% (only the side buttons), and the next time the app goes to the
    background with nothing playing it reloads quietly, so it's immediate again when you come back */
 let routeReset=false;
-function ctlEnded(){if(typeof IOSV==='undefined'||!IOSV)return;if(VOL<1){applyVol(1);try{lvolShow()}catch(e){}}if(gainOn)routeReset=true}
-setInterval(()=>{if(typeof IOSV!=='undefined'&&IOSV&&gainOn&&!remote&&lastRemoteT&&Date.now()-lastRemoteT>60000){lastRemoteT=0;ctlEnded()}},5000);
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&routeReset&&aP()&&!remote&&Date.now()-lastRemoteT>60000){try{sessionStorage.setItem('quietReload','1')}catch(e){}location.reload()}});
+let ctlOn=false;
+function ctlRestore(type){if(type==='vol')return;let v=1;try{v=parseFloat(localStorage.getItem('rvol'))}catch(e){}
+  if(v>=0&&v<0.999&&Math.abs(VOL-v)>0.005){applyVol(v,true);try{lvolShow()}catch(e){}if(isHost)rcPub(true)}}
+function ctlEnded(){ctlOn=false;if(typeof IOSV==='undefined'||!IOSV)return;if(VOL<1){applyVol(1);try{lvolShow()}catch(e){}}if(gainOn)routeReset=true}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&routeReset&&aP()&&!remote){try{sessionStorage.setItem('quietReload','1')}catch(e){}location.reload()}});
 function artIc(isCur){return isCur&&!aP()?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
@@ -2519,7 +2522,7 @@ function rcPost(type,arg,to){if(!D&&!rmOk())return;const c={cid:ME+'.'+Date.now(
 function rcIn(c){if(!c||typeof c!=='object')return;
   if(c.cid){if(cmdSeen.has(c.cid))return;cmdSeen.add(c.cid)}
   if(c.from===ME||c.t<rcStart-3000)return;if(c.to&&c.to!==ME)return;
-  if(c.to===ME&&!remote){lastRemoteT=Date.now();if(!isHost)claim()}
+  if(c.to===ME&&!remote){lastRemoteT=Date.now();if(c.type!=='bye'){routeReset=false;if(!ctlOn){ctlOn=true;ctlRestore(c.type)}}if(!isHost)claim()}
   if(!isHost)return;
   try{rcHandle(c)}catch(e){}}
 function rcSend(type,arg){if(!D&&!rmOk())return;
@@ -2655,7 +2658,7 @@ function rcHandle(c){const t=c.type,a=c.arg;
   else if(t==='rate'){$('spd').value=String(a);au.defaultPlaybackRate=au.playbackRate=+a}
   else if(t==='loop'&&a){loopA=a.a;loopB=a.b;loopOn=!!a.on;ui()}
   else if(t==='item'&&a){const it=items.find(i=>i.id===a.id);if(it)doPlay(it,a.q||null)}
-  else if(t==='vol'){if(typeof a==='number'){applyVol(a,true);try{lvolShow()}catch(e){}}}
+  else if(t==='vol'){if(typeof a==='number'){applyVol(a,true);try{localStorage.setItem('rvol',String(a))}catch(e){}try{lvolShow()}catch(e){}}}
   else if(t==='stop')$('pclose').onclick();
   rcPub(true)}
 /* עטיפות: במצב שלט כל פעולה נשלחת למכשיר המנגן */
@@ -2806,9 +2809,9 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=176;
+const APP_VER=178;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. כשהשליטה נגמרת העוצמה חוזרת לכפתורי הצד, והתגובה חוזרת להיות מיידית בפתיחה הבאה','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
