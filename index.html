@@ -796,6 +796,11 @@ body:not(.noplay):has(#player.min) #okbar{bottom:calc(var(--dockh,150px) + 14px)
 .sgi.on{background:var(--fill);color:#fff}
 .sgi.sgo{color:var(--muted)}
 .player.full .sgb,.player.full .sgr{background:var(--soft)}
+/* תיקיות לפי צוות */
+.tdd{gap:12px;min-height:58px;background:var(--soft)!important}
+.tdd .fic{width:36px;height:36px;border-radius:10px}.tdd .fic svg{width:20px;height:20px}
+.xpr .fic{flex:none;width:40px;height:40px;border-radius:10px}.xpr .fic svg{width:22px;height:22px}
+.xpr small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -1808,6 +1813,45 @@ function suggestPlace(news){
   const rows=news.filter(i=>i&&!isDead(i)).map(it=>{const b=bestFolder(it);return b?{it,cat:b.cat,sub:b.sub}:null}).filter(Boolean);
   if(!rows.length)return;
   moveDialog('לסדר את השירים החדשים בתיקיות?',(rows.length===1?'לשיר החדש יש':rows.length+' מהשירים החדשים יש להם')+' שם שמתאים לתיקייה קיימת:',rows,true)}
+/* ייבוא של כמה קבצים: מוזיקות עם אותו שם צוות (למשל "רוני ושירז באלאנס", "רוני ושירז טמפ")
+   ואין להן תיקייה. מציעים לפתוח תיקייה על שם הצוות ולהעביר אליה */
+const TYPEW=new Set(['באלאנס','בלאנס','בלנס','באלנס','טמפ','טמפו','טמפּ','שלישי','קומבינציה','קומבו','דינמי','סטטי','תרגיל','balance','tempo','combined','combo','final','מעודכן','חדש','סופי','גרסה','this','message','was','edited']);
+function teamOf(name){const raw=String(name||'').replace(/this message was edited/ig,' ').replace(/\.[a-z0-9]{2,4}$/i,'').replace(/[^\p{L}\p{N}\s]+/gu,' ');
+  const w=raw.split(/\s+/).filter(x=>x&&!TYPEW.has(x.toLowerCase())&&!/^\d+$/.test(x)&&!/^(aud|ptt|wa\d+)/i.test(x));
+  return w.length?w.join(' '):''}
+function teamGroups(list){const m=new Map();list.forEach(it=>{const t=teamOf(it.name);if(!t)return;const k=nameToks(t).join(' ');if(!k)return;if(!m.has(k))m.set(k,{name:t,items:[]});m.get(k).items.push(it)});
+  return[...m.values()].filter(g=>g.items.length>=2)}
+function teamSuggest(list,parent){const gs=teamGroups((list||[]).filter(i=>i&&!isDead(i)));if(!gs.length)return;
+  const wait=()=>{if(document.querySelector('.pkov,#ask:not([hidden]),.nfov'))return setTimeout(wait,400);teamDialog(gs,parent)};setTimeout(wait,300)}
+function teamDialog(gs,parent){
+  let dest=parent&&parent.cat&&parent.cat!==INBOX?{cat:parent.cat,sub:parent.sub||''}:{cat:(curCat&&cats.includes(curCat)&&curCat!==INBOX)?curCat:(vcats()[0]||cats.find(c=>c!==INBOX)||''),sub:''};
+  if(!dest.cat)return;
+  const sel=new Set(gs.map((g,i)=>i));
+  const o=document.createElement('div');o.className='pkov as';const c=document.createElement('div');c.className='ash';c.setAttribute('role','dialog');c.setAttribute('aria-label','תיקיות לפי צוות');
+  const g=document.createElement('div');g.className='asg';
+  const h=document.createElement('div');h.className='ahd cmh';h.innerHTML='<b></b><small></small>';
+  h.firstChild.textContent=gs.length===1?'לפתוח תיקייה לצוות "'+gs[0].name+'"?':'לפתוח תיקיות לפי צוות?';
+  h.lastChild.textContent='יש כאן כמה מוזיקות של אותו צוות. אפשר לפתוח לכל צוות תיקייה ולהעביר אליה את המוזיקות שלו.';
+  const dw=document.createElement('button');dw.className='aso tdd';
+  const drawDest=()=>{dw.innerHTML='<span class="fic">'+(dest.sub?ICN.folder:ICN.lib)+'</span>';dw.style.setProperty('--fh',hueOf(dest.sub?dest.sub.split(' / ').pop():dest.cat));const t=document.createElement('span');t.className='aot';t.textContent='ייפתחו בתוך: '+locStr(dest.cat,dest.sub);const sm=document.createElement('small');sm.textContent='לחץ כדי לבחור מקום אחר';t.appendChild(sm);dw.appendChild(t);dw.dataset.ic=dw.textContent};drawDest();
+  const L=document.createElement('div');L.className='fpl';g.append(h,dw,L);
+  const ok=document.createElement('button');ok.className='asc xok';const x=document.createElement('button');x.className='asc';x.textContent='לא עכשיו';
+  const upd=()=>{const n=[...sel].reduce((a,i)=>a+gs[i].items.length,0);ok.textContent=sel.size?(sel.size===1?'פתיחת תיקייה והעברת '+n+' מוזיקות':'פתיחת '+sel.size+' תיקיות והעברת '+n+' מוזיקות'):'בחר צוות';ok.disabled=!sel.size;ok.dataset.ic=ok.textContent};
+  gs.forEach((gr,i)=>{const b=document.createElement('button');b.className='aso xpr on';b.setAttribute('aria-pressed','true');b.style.setProperty('--fh',hueOf(gr.name));
+    b.innerHTML='<span class="xck">'+ICN.check+'</span><span class="fic">'+ICN.folder+'</span>';const t=document.createElement('span');t.className='aot';t.textContent=gr.name;
+    const sm=document.createElement('small');sm.textContent=gr.items.length+' מוזיקות: '+gr.items.map(it=>it.name).join(' · ');t.appendChild(sm);b.appendChild(t);b.dataset.ic=b.textContent;
+    b.onclick=()=>{sel.has(i)?sel.delete(i):sel.add(i);b.classList.toggle('on');b.setAttribute('aria-pressed',sel.has(i));upd()};L.appendChild(b)});
+  const fin=()=>{if(o.dataset.done)return;o.dataset.done=1;o.classList.add('out');setTimeout(()=>o.remove(),180)};
+  dw.onclick=async()=>{o.style.visibility='hidden';const r=await folderPicker('איפה לפתוח את התיקיות?',dest);o.style.visibility='';if(r){dest=r;drawDest()}};
+  x.onclick=fin;o.onclick=e=>{if(e.target===o)fin()};
+  ok.onclick=()=>{let moved=0;const made=[];
+    [...sel].forEach(i=>{const gr=gs[i],path=dest.sub?dest.sub+' / '+gr.name:gr.name,fk=dest.cat+'||'+path;if(!folders.includes(fk))folders.push(fk);made.push(gr.name);
+      gr.items.forEach(it=>{it.cat=dest.cat;it.sub=path;put(it);moved++})});
+    fin();saveLS();
+    if(dest.sub){const sg=dest.sub.split(' / ');for(let k=1;k<=sg.length;k++)openK.add(dest.cat+'||'+sg.slice(0,k).join(' / '))}
+    if(view!=='inbox'){filter=dest.cat;curCat=dest.cat}render();
+    showOk((made.length===1?'נפתחה תיקייה "'+made[0]+'"':'נפתחו '+made.length+' תיקיות')+' והועברו אליה'+(made.length===1?'':'ן')+' '+moved+' מוזיקות')};
+  upd();c.append(g,ok,x);o.appendChild(c);document.body.appendChild(o)}
 function destPicker(n,defCat,defSub){return folderPicker('להוסיף '+(n===1?'שיר אחד':n+' שירים')+' לאיפה?',{cat:defCat,sub:defSub||''})}
 $('file').onchange=async e=>{
   const files=[...e.target.files].filter(f=>/^(audio|video)/.test(f.type)||/\.(mp3|m4a|wav|aac|ogg|opus|amr|flac|wma|mp4|3gp)$/i.test(f.name));e.target.value='';
@@ -1821,7 +1865,7 @@ $('file').onchange=async e=>{
     items.push(it);putBlob(it);put(it);toCloud(it);newIts.push(it)});
   filter=cat;curCat=cat;curSub=sub;
   openK.clear();if(sub){const sg=sub.split(' / ');for(let i=1;i<=sg.length;i++)openK.add(cat+'||'+sg.slice(0,i).join(' / '))}
-  render();suggestPlace(newIts);
+  render();suggestPlace(newIts);teamSuggest(newIts.filter(i=>!bestFolder(i)),{cat,sub});
 };
 /* ייבוא zip של ייצוא צ'אט וואטסאפ: קורא את הקובץ בלי ספרייה, ומחלץ רק קבצי שמע */
 async function zipEntries(file){
@@ -1881,7 +1925,8 @@ $('zipf').onchange=async e=>{
         items.push(it);putBlob(it);put(it);toCloud(it);added++;zipNew.push(it)}catch(err){bad++}
       if(k%3===0)render();await new Promise(r=>setTimeout(r,0))}
     if(view!=='inbox'&&added>auto)setView('inbox');else render();
-    {const msg='יובאו '+added+' שירים'+(auto?' · '+auto+' מוינו לבד לתיקיות':'')+(added-auto?' · '+(added-auto)+' ממתינים למיון':'')+(named?' · '+named+' בשם מההודעה שאחרי הקובץ':'')+(skipped?' · '+skipped+' כבר קיימים':'')+(bad?' · '+bad+' נכשלו':'');if(bad)showErr(msg);else showOk(msg)}
+    {const msg='יובאו '+added+' מוזיקות'+(auto?' · '+auto+' מוינו לבד לתיקיות':'')+(added-auto?' · '+(added-auto)+' ממתינים למיון':'')+(named?' · '+named+' בשם מההודעה שאחרי הקובץ':'')+(skipped?' · '+skipped+' כבר קיימים':'')+(bad?' · '+bad+' נכשלו':'');if(bad)showErr(msg);else showOk(msg)}
+    teamSuggest(zipNew.filter(i=>i.cat===INBOX),null);
   }catch(err){showErr('הייבוא נכשל: '+((err&&err.message)||err))}
   stat()};
 $('inbtn').onclick=()=>setView(view==='inbox'?(preIn==='queue'?'queue':'music'):'inbox');
@@ -2545,7 +2590,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=159;
+const APP_VER=160;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
