@@ -750,6 +750,19 @@ body:not(.noplay) #okbar{bottom:calc(var(--dockh,150px) + 14px)}
 #errbar .ttx,#okbar .ttx{flex:1;min-width:0}
 #errbar .tx{flex:none;display:inline-flex;opacity:.85}#errbar .tx svg{width:16px;height:16px}
 @media (prefers-reduced-motion:reduce){#errbar,#okbar{animation:none}}
+/* הסתרה / הצגה */
+.cmh{display:flex;flex-direction:column;gap:3px;text-align:center}
+.cmh b{font-size:16.5px}.cmh small{font-size:13px;color:var(--muted);line-height:1.45}
+.cmr{gap:12px;min-height:62px}
+.cmr .fic{width:38px;height:38px;border-radius:10px}.cmr .fic svg{width:20px;height:20px}
+.cmr .aot{font-weight:600}
+.cmr.off .fic,.cmr.off .aot>:not(small){opacity:.45}
+.cmr.off .aot{color:color-mix(in srgb,var(--ink) 55%,transparent)}
+.tgl{flex:none;position:relative;width:51px;height:31px;border-radius:16px;background:#34c759;transition:background .2s}
+.tgl i{position:absolute;top:2px;inset-inline-start:22px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:inset-inline-start .2s cubic-bezier(.3,.8,.3,1.1)}
+.cmr.off .tgl{background:color-mix(in srgb,var(--ink) 18%,transparent)}
+.cmr.off .tgl i{inset-inline-start:2px}
+@media (prefers-reduced-motion:reduce){.tgl,.tgl i{transition:none}}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -1208,12 +1221,22 @@ async function clearCat(cat){const list=items.filter(i=>i.cat===cat);
 let hiddenC=new Set();try{hiddenC=new Set(JSON.parse(localStorage.getItem('hiddenCats')||'[]'))}catch(e){}
 const vcats=()=>cats.filter(c=>!hiddenC.has(c)&&c!==INBOX);
 function saveHidden(){try{localStorage.setItem('hiddenCats',JSON.stringify([...hiddenC]))}catch(e){}}
-function catManager(){return new Promise(res=>{const o=document.createElement('div');o.className='pkov';o.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:70;display:flex;align-items:center;justify-content:center;padding:16px';const c=document.createElement('div');c.className='card pkcard';c.style.cssText='width:100%;max-width:360px;max-height:80vh;overflow:auto';
-  const t=document.createElement('div');t.textContent='הצגת קבוצות';t.style.fontWeight='600';c.appendChild(t);const h=document.createElement('div');h.textContent='לחץ על קבוצה כדי להסתיר או לחשוף אותה';h.style.cssText='font-size:12px;color:var(--muted);margin:2px 0 6px';c.appendChild(h);
-  const row=cat=>{const b=document.createElement('button');b.className='btn ghost';b.style.cssText='display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:8px;transition:opacity .2s';const n=document.createElement('span');n.textContent=cat;const st=document.createElement('span');st.style.cssText='font-size:12px';
-    const up=()=>{const hd=hiddenC.has(cat);b.style.opacity=hd?'.4':'1';st.textContent=hd?'מוסתרת':'מוצגת'};up();b.onclick=()=>{if(hiddenC.has(cat))hiddenC.delete(cat);else hiddenC.add(cat);saveHidden();up();dirty=true};b.append(n,st);return b};
-  let dirty=false;cats.filter(k=>k!==INBOX).forEach(k=>c.appendChild(row(k)));
-  const d=document.createElement('button');d.className='btn';d.style.cssText='display:block;width:100%;margin-top:12px';d.textContent='סיום';const close=()=>{o.remove();res(dirty)};d.onclick=close;o.onclick=e=>{if(e.target===o)close()};c.appendChild(d);o.appendChild(c);document.body.appendChild(o)})}
+/* הסתרה / הצגה של קטגוריות: גיליון מלמטה עם מתגים */
+function catManager(){return new Promise(res=>{const o=document.createElement('div');o.className='pkov as';
+  const c=document.createElement('div');c.className='ash';c.setAttribute('role','dialog');c.setAttribute('aria-label','הסתרה והצגה של קטגוריות');
+  const g=document.createElement('div');g.className='asg';
+  const h=document.createElement('div');h.className='ahd cmh';h.innerHTML='<b>הסתרה / הצגה של קטגוריות</b><small>קטגוריה מוסתרת לא מופיעה בספרייה. המוזיקות שבה לא נמחקות.</small>';
+  const L=document.createElement('div');L.className='fpl';g.append(h,L);
+  let dirty=false;const list=cats.filter(k=>k!==INBOX);
+  list.forEach(cat=>{const b=document.createElement('button');b.className='aso cmr';b.setAttribute('role','switch');b.style.setProperty('--fh',hueOf(cat));
+    b.innerHTML='<span class="fic">'+ICN.lib+'</span>';const tx=document.createElement('span');tx.className='aot';tx.textContent=cat;const sm=document.createElement('small');tx.appendChild(sm);
+    const sw=document.createElement('span');sw.className='tgl';sw.innerHTML='<i></i>';b.append(tx,sw);
+    const up=()=>{const on=!hiddenC.has(cat),n=count(cat,'');b.classList.toggle('off',!on);b.setAttribute('aria-checked',on);sm.textContent=(on?'מוצגת':'מוסתרת')+' · '+(n===0?'ריקה':n===1?'מוזיקה אחת':n+' מוזיקות')};up();
+    b.onclick=()=>{if(hiddenC.has(cat))hiddenC.delete(cat);else{if(list.filter(k=>!hiddenC.has(k)).length<=1){showErr('צריך להשאיר לפחות קטגוריה אחת מוצגת');return}hiddenC.add(cat)}saveHidden();up();dirty=true};
+    b.dataset.ic=b.textContent;L.appendChild(b)});
+  const d=document.createElement('button');d.className='asc';d.textContent='סיום';
+  const close=()=>{if(o.dataset.done)return;o.dataset.done=1;o.classList.add('out');setTimeout(()=>o.remove(),180);res(dirty)};
+  d.onclick=close;o.onclick=e=>{if(e.target===o)close()};c.append(g,d);o.appendChild(c);document.body.appendChild(o)})}
 function chipsRow(){tabsR();const C=$('chips');C.innerHTML='';[...vcats().map(c=>[c,c]),['\u0001add','＋'],['הכול','כל המוזיקות']].forEach(([k,l])=>{
     if(k==='\u0001add'){const a=chip(l,false,()=>$('newcat').click());a.classList.add('addc');a.setAttribute('aria-label','הוספת קטגוריה');C.appendChild(a);return}
     const ch=chip(l,k===filter,()=>{const sw=k!==filter&&cats.includes(k)&&cats.includes(filter);const dir=sw?(cats.indexOf(k)>cats.indexOf(filter)?-1:1):0;filter=k;if(cats.includes(k)){curCat=k;curSub='';if(sw)openK.clear()}render();if(sw){const L=$('list');L.style.setProperty('--sd',(dir*28)+'px');L.classList.remove('catswap');void L.offsetWidth;L.classList.add('catswap')}});
@@ -2410,7 +2433,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=156;
+const APP_VER=157;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
