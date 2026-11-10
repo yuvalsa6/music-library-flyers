@@ -2505,14 +2505,23 @@ function takeOver(){if(!remote)return;const old=target,vp=vpos(),P0=PS?{...PS}:n
   /* the song that plays on the other device, from its last state (not whatever was loaded here before) */
   const it=P0&&P0.id?items.find(i=>i.id===P0.id):null;
   if(!it){rawPause();if(P0&&P0.id)showErr('המוזיקה שניגנה במכשיר השני לא נמצאת כאן');hbn=((P0&&P0.hb)||0)+1;rcPub(true);devUI();return}
-  if(curId!==it.id||!au.getAttribute('src')){curQ=P0.q||null;indQ=null;syncDone();loadItem(it)}else{curQ=P0.q||null}
+  /* always reload the real song: the local element may hold a short silent placeholder, and seeking past
+     its end made it "finish" and jump to the next song in the queue */
+  resumeAt={id:it.id,t0:Date.now(),vp,pl:wasPl};curQ=P0.q||null;indQ=null;syncDone();loadItem(it);
   if(P0.la!=null||P0.lb!=null){loopA=P0.la;loopB=P0.lb;loopOn=!!P0.lo;ui()}
   {const r=P0.rate||1;if(+$('spd').value!==r){$('spd').value=String(r);au.defaultPlaybackRate=au.playbackRate=r}}
-  const t0=Date.now(),want=()=>vp+(wasPl?(Date.now()-t0)/1000:0),fix=()=>{if(remote||!isHost)return;if(Math.abs(cts.get.call(au)-want())>1.5)rawSeek(want())};
-  rawSeek(vp);['loadedmetadata','canplay','playing'].forEach(ev=>au.addEventListener(ev,fix,{once:true}));
-  if(!it.blob&&!it.asset){if(it.ac)fetchAudio(it,wasPl);else showErr('אין קובץ שמע לתרגיל הזה במכשיר הזה')}
-  hbn=((P0&&P0.hb)||0)+1;if(wasPl)rawPlay().catch(()=>{});render();rcPub(true);devUI();showOk('המוזיקה ממשיכה במכשיר הזה')}
+  if(!it.blob&&!it.asset&&!it.ac)showErr('אין קובץ שמע לתרגיל הזה במכשיר הזה');
+  hbn=((P0&&P0.hb)||0)+1;resumeFix();render();rcPub(true);devUI();showOk('המוזיקה ממשיכה במכשיר הזה')}
 /* stop controlling: the other device keeps playing its music, this one is free (empty player) */
+/* after taking over: keep putting the player at the right point of the right song, also when the real file
+   arrives later (download), and don't treat a placeholder's end as the end of the song */
+let resumeAt=null;
+const resumeWant=()=>resumeAt?resumeAt.vp+(resumeAt.pl?(Date.now()-resumeAt.t0)/1000:0):0;
+function resumeFix(){if(!resumeAt||remote)return;if(curId!==resumeAt.id||Date.now()-resumeAt.t0>90000){resumeAt=null;return}
+  const w=resumeWant(),d=NDD.get.call(au);if(isFinite(d)&&d>0&&w>=d-0.5)return;
+  if(Math.abs(cts.get.call(au)-w)>1.5)rawSeek(w);if(resumeAt.pl&&NPD.get.call(au))rawPlay().catch(()=>{});
+  const it=cur();if(it&&it.blob&&au.src.startsWith('blob:')&&Math.abs(cts.get.call(au)-w)<2)setTimeout(()=>{if(resumeAt&&curId===resumeAt.id&&Math.abs(cts.get.call(au)-resumeWant())<2)resumeAt=null},1500)}
+['loadedmetadata','canplay','playing'].forEach(ev=>au.addEventListener(ev,resumeFix));
 function stopControl(){if(!remote)return;detach();try{rawPause();au.removeAttribute('src');au.load()}catch(e){}curId=null;curQ=null;doneQ.clear();indQ=null;try{emptyPlayer()}catch(e){}$('player').hidden=true;render();showOk('השליטה הופסקה. המכשיר השני ממשיך לנגן')}
 function follow(d){
   if(d&&typeof d.vol==='number'&&Date.now()>=optVol)volShow(d.vol);{const w=$('devvolw');if(w)w.classList.toggle('blk',!!(d&&d.vb))}
@@ -2559,7 +2568,7 @@ const _step=step;step=function(d){if(remote){optStep(d);rcSend('step',d);return 
 const _doPlay=doPlay;doPlay=function(it,qe){if(remote){curQ=qe||null;indQ=null;if(qe)doneQ.delete(qe);syncDone();optNav=Date.now()+900;optPlay=optNav;setRP(true);loadItem(it);rawPlay().catch(()=>{});render();rcSend('item',{id:it.id,q:qe||null});return}_doPlay(it,qe)};
 const _startPlay=startPlay;startPlay=async function(){if(remote){optPlay=Date.now()+800;setRP(true);rawPlay().catch(()=>{});rcSend('play');return}await _startPlay()};
 const _playSeg=playSeg;playSeg=function(s,loop){_playSeg(s,loop);if(remote)rcSend('loop',{a:loopA,b:loopB,on:loopOn})};
-{const f=au.onended;au.onended=function(){if(remote)return;f.call(this)}}
+{const f=au.onended;au.onended=function(){if(remote)return;if(resumeAt&&curId===resumeAt.id&&Date.now()-resumeAt.t0<90000){resumeFix();return}f.call(this)}}
 {const f=$('spd').onchange;$('spd').onchange=function(e){if(remote){rcSend('rate',+e.target.value);return}f.call(this,e);rcPub(false)}}
 ['la','lb','lp','lc'].forEach(id=>{const f=$(id).onclick;$(id).onclick=function(e){f.call(this,e);if(remote)rcSend('loop',{a:loopA,b:loopB,on:loopOn});else rcPub(false)}});
 {const f=$('pp').onclick;$('pp').onclick=function(e){if(remote&&!curId&&PS&&PS.id){optPlay=Date.now()+800;const w=rPlaying;setRP(!w);rcSend(w?'pause':'play');return}if(remote&&!curId){const l=qList();if(l[0])rcSend('item',{id:l[0].it.id,q:l[0].e});return}f.call(this,e)}}
@@ -2701,7 +2710,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=167;
+const APP_VER=168;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
