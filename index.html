@@ -1922,27 +1922,39 @@ async function sync(){
 au.onplay=sync;au.onpause=sync;
 au.onloadedmetadata=()=>{triedCloud=false;setTimeout(drawMarks,0);au.playbackRate=+$('spd').value;$('dur').textContent=fmt(aD());const it=cur();if(it&&!it.dur&&isFinite(aD())){it.dur=aD();put(it);render()}};
 let dragUntil=0;
-function paint(){const d=aD(),t=aT();if(!(d>0)||!isFinite(d))return;const fr=Math.min(1,t/d);
+/* smooth clock for the bar: the player reports its time in steps (on iPhone every quarter second or so),
+   so between reports the bar moves on by itself and gently follows the real time; big jumps snap */
+let smT=null,smAt=0;
+function smoothT(){const t=aT(),now=performance.now();if(aP()||smT==null||!isFinite(t)){smT=t;smAt=now;return t}
+  const r=(RCX&&RCX.on())?(+$('spd').value||1):(au.playbackRate||1);let v=smT+Math.min(0.25,(now-smAt)/1000)*r;smAt=now;
+  const e=t-v;if(Math.abs(e)>0.7)v=t;else v+=e*0.06;smT=v;return v}
+function paint(){if(Date.now()<dragUntil)return;const d=aD(),t=Math.max(0,smoothT());if(!(d>0)||!isFinite(d))return;const fr=Math.min(1,t/d);
   if(remote){devNow();$('dur').textContent=fmt(d)}const r=$('range');if(r&&Date.now()>dragUntil)r.value=fr*1000;$('cur').textContent=fmt(t);
   const mp=$('mprog');if(mp&&mp.firstChild)mp.firstChild.style.width=(fr*100)+'%';
   const fl=$('fill');if(fl)fl.style.width='calc(14px + (100% - 28px) * '+fr+')'}
 let raf=0;const tick=()=>{raf=0;if(!aP()){paint();raf=requestAnimationFrame(tick)}};
 au.addEventListener('play',()=>{if(!raf)raf=requestAnimationFrame(tick)});
 au.addEventListener('durationchange',()=>{if(isFinite(aD())&&aD()>0){$('dur').textContent=fmt(aD());drawMarks();paint()}});
-au.ontimeupdate=()=>{if(aD())$('range').value=aT()/aD()*1000;$('cur').textContent=fmt(aT());const mp=$('mprog');if(mp&&aD())mp.firstChild.style.width=(aT()/aD()*100)+'%';paint()};
+au.ontimeupdate=()=>{if(!raf)paint()};
 au.onended=()=>{if(curQ){const it0=cur(),n=qStep(1);if(n){advAnim(curQ,n.e);const g=effGap(qgap[curQ]!=null?qgap[curQ]:null);if(g>0){sync();runGap(g,n.it,n.e);return}curQ=n.e;loadItem(n.it);startPlay();return}advAnim(curQ,null);sync();return}const it=cur(),l=visible(),k=l.findIndex(i=>i.id===curId),nx=l[k+1];
   if(filter===PL&&nx){const g=it.gap==null?gapDef:it.gap;if(g>0){sync();runGap(g,nx);return}}
   if(!step(1))sync()};
 setInterval(()=>{if(!remote&&loopOn&&loopB!=null&&!aP()&&aT()>=loopB)aSeek(loopA||0)},40);
 
-/* jumping with the bar: the bar and time follow the finger at once; the player gets at most one jump every
-   ~90ms while dragging (on iPhone a stream of jumps queues up and feels late), and the exact point on release */
-function paintAt(t){const d=aD();if(!(d>0)||!isFinite(d))return;const fr=Math.min(1,Math.max(0,t/d));dragUntil=Date.now()+1200;
+/* jumping with the bar: the bar and time follow the finger at once, the sound is silent while dragging,
+   and the player jumps once, on release, to the exact point (then the sound comes back) */
+function paintAt(t){const d=aD();if(!(d>0)||!isFinite(d))return;const fr=Math.min(1,Math.max(0,t/d));dragUntil=Math.max(dragUntil,Date.now()+1200);smT=null;
   $('cur').textContent=fmt(t);const mp=$('mprog');if(mp&&mp.firstChild)mp.firstChild.style.width=(fr*100)+'%';const fl=$('fill');if(fl)fl.style.width='calc(14px + (100% - 28px) * '+fr+')';
   if(remote){const df=$('devfill'),dt=$('devtime');if(df)df.style.width=(fr*100)+'%';if(dt)dt.textContent=fmt(t)+' / '+fmt(d)}}
-let skT=0,skLast=0,skPend=null;
-function seekSoon(t,final){paintAt(t);const now=Date.now();if(final||now-skLast>=90){clearTimeout(skT);skT=0;skPend=null;skLast=now;aSeek(t);return}
-  skPend=t;if(!skT)skT=setTimeout(()=>{skT=0;if(skPend!=null){const v=skPend;skPend=null;skLast=Date.now();aSeek(v)}},90-(now-skLast))}
+let skPend=null,scrubOn=false,scrubT=0;
+function gainTo(v){try{if(typeof gainOn!=='undefined'&&gainOn&&GN&&ACX){const n=ACX.currentTime;GN.gain.cancelScheduledValues(n);if(v)GN.gain.setTargetAtTime(v,n,0.02);else GN.gain.setValueAtTime(0,n)}}catch(e){}}
+function scrubMute(){if(remote||scrubOn||aP())return;scrubOn=true;clearTimeout(scrubT);au.muted=true;gainTo(0)}
+function scrubUn(afterSeek){clearTimeout(scrubT);if(!scrubOn)return;
+  const un=()=>{clearTimeout(scrubT);if(!scrubOn)return;scrubOn=false;if(!remote)au.muted=false;if(!window.rsBusyNow)gainTo(VOL)};
+  if(afterSeek){au.addEventListener('seeked',()=>setTimeout(un,60),{once:true});scrubT=setTimeout(un,900)}else un()}
+function seekSoon(t,final){paintAt(t);if(!final){skPend=t;scrubMute();return}skPend=null;aSeek(t);scrubUn(true)}
+/* finger lifted without a final "change" (some browsers): finish the jump anyway */
+function scrubDone(){setTimeout(()=>{if(skPend!=null&&aD())seekSoon(skPend,true);else scrubUn(false)},60)}
 $('range').oninput=e=>{if(aD())seekSoon(e.target.value/1000*aD())};
 $('range').addEventListener('change',e=>{if(aD())seekSoon(e.target.value/1000*aD(),true)});
 $('pp').onclick=()=>{if(curId)aP()?startPlay():au.pause();else{const l=qList();if(l[0]){curQ=l[0].e;loadItem(l[0].it);startPlay()}}};
@@ -2724,12 +2736,12 @@ $('devhere').onclick=pickSource;
   setTimeout(stat,6000)}catch(e){}})}
 {const rg=$('range');
  ['pointerdown','touchstart','mousedown'].forEach(ev=>rg.addEventListener(ev,()=>{dragUntil=Infinity},{passive:true}));
- ['pointerup','pointercancel','touchend','touchcancel','mouseup','change'].forEach(ev=>rg.addEventListener(ev,()=>{dragUntil=Date.now()+1200},{passive:true}));
+ ['pointerup','pointercancel','touchend','touchcancel','mouseup','change'].forEach(ev=>rg.addEventListener(ev,()=>{dragUntil=Date.now()+1200;if(ev!=='change')scrubDone()},{passive:true}));
  const n=$('devnow');let drag=false;
  const go=(e,fin)=>{const r=n.getBoundingClientRect(),d=aD()||0;if(d>0){dragUntil=Date.now()+1500;seekSoon(Math.min(1,Math.max(0,(e.clientX-r.left)/r.width))*d,fin)}};
  n.addEventListener('pointerdown',e=>{drag=true;try{n.setPointerCapture(e.pointerId)}catch(_){}go(e)});
  n.addEventListener('pointermove',e=>{if(drag)go(e)});
- n.addEventListener('pointerup',e=>{if(drag)go(e,true);drag=false;dragUntil=Date.now()+1200});n.addEventListener('pointercancel',()=>{drag=false;dragUntil=Date.now()+1200});}
+ n.addEventListener('pointerup',e=>{if(drag)go(e,true);drag=false;dragUntil=Date.now()+1200});n.addEventListener('pointercancel',()=>{drag=false;dragUntil=Date.now()+1200;scrubDone()});}
 addEventListener('pagehide',()=>{if(isHost)rcRelease()});
 setInterval(()=>{if(remote){try{paint();devNow()}catch(e){}}},250);
 let idleSince=0;
@@ -2825,9 +2837,9 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=179;
+const APP_VER=180;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
