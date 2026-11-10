@@ -2465,7 +2465,8 @@ function rcPost(type,arg,to){if(!D&&!rmOk())return;const c={cid:ME+'.'+Date.now(
 function rcIn(c){if(!c||typeof c!=='object')return;
   if(c.cid){if(cmdSeen.has(c.cid))return;cmdSeen.add(c.cid)}
   if(c.from===ME||c.t<rcStart-3000)return;if(c.to&&c.to!==ME)return;
-  if(!isHost&&!(c.to===ME&&c.type==='item'))return;
+  if(c.to===ME&&!remote){lastRemoteT=Date.now();if(!isHost)claim()}
+  if(!isHost)return;
   try{rcHandle(c)}catch(e){}}
 function rcSend(type,arg){if(!D&&!rmOk())return;
   if(type==='seek'){if(!seekT){rcPost('seek',arg);seekArg=null;seekT=setTimeout(()=>{seekT=0;if(seekArg!=null){rcPost('seek',seekArg);seekArg=null}},120)}else seekArg=arg;return}
@@ -2503,6 +2504,7 @@ function attach(id){
   if(!id){target=null;goStandalone();devUI();return}
   if(isHost)rcRelease();try{rawPause()}catch(e){}
   target=id;PS=null;lastN=null;lastRecv=Date.now();if(!remote)goRemote();try{RM&&RM.connect&&RM.connect(id)}catch(e){}
+  lastHello=Date.now();rcPost('hello',null,id);
   let lastT=0;
   const apply=d=>{if(target!==id)return;
     if(d&&d.t){if(d.t<lastT)return;lastT=d.t}
@@ -2546,6 +2548,7 @@ const volShow=v=>{const e=$('devvol');if(!e)return;e.value=String(Math.round(v*1
   e.addEventListener('change',()=>{clearTimeout(volTm);optVol=Date.now()+1200;rcSend('vol',(+e.value)/100)});
   ['pointerdown','touchstart'].forEach(ev=>e.addEventListener(ev,x=>x.stopPropagation(),{passive:true}))}}
 function rcHandle(c){const t=c.type,a=c.arg;
+  if(t==='hello'){rcPub(true);return}
   if(t==='play')startPlay();
   else if(t==='pause')rawPause();
   else if(t==='seek'){if(typeof a==='number')rawSeek(a)}
@@ -2611,7 +2614,9 @@ $('devhere').onclick=pickSource;
 addEventListener('pagehide',()=>{if(isHost)rcRelease()});
 setInterval(()=>{if(remote){try{paint();devNow()}catch(e){}}},250);
 let idleSince=0;
-setInterval(()=>{if(remote&&Date.now()-lastRecv>20000)detach();if(isHost&&D){if(au.paused){if(!idleSince)idleSince=Date.now();else if(Date.now()-idleSince>90000){idleSince=0;rcRelease();return}}else idleSince=0;rcPub(true)}else idleSince=0},2500);
+let lastHello=0,lastRemoteT=0;
+setInterval(()=>{if(remote&&target&&Date.now()-lastHello>20000){lastHello=Date.now();rcPost('hello',null,target)}
+  if(remote&&Date.now()-lastRecv>45000)detach();if(isHost&&D){if(au.paused&&Date.now()-lastRemoteT>60000){if(!idleSince)idleSince=Date.now();else if(Date.now()-idleSince>90000){idleSince=0;rcRelease();return}}else idleSince=0;rcPub(true)}else idleSince=0},2500);
 const DEAD=['fa10509c01445cbcbe6ad001f9310de0','ee76406a05a094d839fdb4f9b5aab5a3','a6feb75370fac56b41579f597e52925b'];
 const isDead=i=>!!(i&&i.asset&&DEAD.some(d=>String(i.asset).includes(d)));
 function purgeDead(){const bad=items.filter(isDead);if(!bad.length)return;
@@ -2632,7 +2637,7 @@ const P2P=(()=>{
   const drop=(id,why)=>{const p=peers.get(id);if(!p)return;peers.delete(id);clearInterval(p.ping);clearTimeout(p.to);try{p.dc&&p.dc.close()}catch(_){}try{p.pc.close()}catch(_){}try{devUI()}catch(_){}
     if(why&&p.init&&remote&&target===id){const n=(fails.get(id)||0)+1;fails.set(id,n);setTimeout(()=>{if(remote&&target===id&&!peers.has(id))connect(id)},Math.min(30000,2000*n))}};
   const wire=(id,p,dc)=>{p.dc=dc;
-    dc.onopen=()=>{p.last=Date.now();clearTimeout(p.to);fails.delete(id);p.ping=setInterval(()=>{try{dc.readyState==='open'&&dc.send('{"e":"ping"}')}catch(_){}},1500);try{devUI()}catch(_){}if(isHost)rcPub(true)};
+    dc.onopen=()=>{p.last=Date.now();clearTimeout(p.to);fails.delete(id);if(!p.init&&!remote){lastRemoteT=Date.now();if(!isHost)claim()}p.ping=setInterval(()=>{try{dc.readyState==='open'&&dc.send('{"e":"ping"}')}catch(_){}},1500);try{devUI()}catch(_){}if(isHost)rcPub(true)};
     dc.onmessage=ev=>{p.last=Date.now();let m;try{m=JSON.parse(ev.data)}catch(_){return}if(!m||m.e==='ping')return;if(m.e==='state'&&m.d&&target===id)lastRecv=Date.now();fire(m.e,m.d,id)};
     dc.onclose=()=>drop(id,'closed')};
   const mk=(id,init)=>{const pc=new RTCPeerConnection(ICE),p={pc,dc:null,init,last:0,ping:0,to:0};peers.set(id,p);
@@ -2701,7 +2706,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=162;
+const APP_VER=163;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
