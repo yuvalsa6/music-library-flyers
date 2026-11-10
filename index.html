@@ -831,6 +831,13 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
 .wn ul{max-height:46vh}
 .wn li{flex-direction:row!important;gap:8px;align-items:flex-start;font-size:15px;line-height:1.45}
 .wn li::before{content:'';flex:none;width:7px;height:7px;margin-top:8px;border-radius:50%;background:var(--accent)}
+/* הגדרות: מסך ועדכונים */
+.sheet .gr .k small{display:block;font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.4}
+.sheet button.gr.gtg{width:100%;border:0;background:transparent;color:var(--ink);font:inherit;text-align:start;cursor:pointer;border-bottom:.5px solid var(--line)}
+.sheet button.gr.gtg:disabled{opacity:.5;cursor:default}
+.sheet .gtg.off .tgl{background:color-mix(in srgb,var(--ink) 18%,transparent)}
+.sheet .gtg.off .tgl i{inset-inline-start:2px}
+.sheet #updbtn:disabled{opacity:.5}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -1594,6 +1601,20 @@ function whatsNew(){let seen=0;try{seen=+localStorage.getItem('seenVer')||0;loca
     else{const sm=document.createElement('small');sm.textContent='שיפורים ותיקונים קטנים';h.appendChild(sm)}
     pick('עדכון',[{t:'סגירה',ghost:true}],h)};
   setTimeout(show,1200)}
+/* מסך דלוק: בזמן ניגון תמיד, ועם ההגדרה "השאר את המסך דלוק" כל עוד האפליקציה פתוחה */
+let keepAwake=false;try{keepAwake=localStorage.getItem('keepAwake')==='1'}catch(e){}
+async function wakeSync(){const want=!document.hidden&&(keepAwake||!aP());
+  try{if(want&&!wl&&navigator.wakeLock){wl=await navigator.wakeLock.request('screen');wl.onrelease=()=>{wl=null}}
+  else if(!want&&wl){const w=wl;wl=null;await w.release()}}catch(e){}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)setTimeout(wakeSync,300)});
+if(keepAwake)setTimeout(wakeSync,800);
+/* רענון גרסה: בודק מול השרת אם יש גרסה חדשה, ומעדכן מיד */
+async function checkUpdate(out){out('בודק…');let latest=0;
+  try{const t=await (await fetch('index.html?v='+Date.now(),{cache:'no-store'})).text();const m=t.match(/const APP_VER=(\d+)/);latest=m?+m[1]:0}catch(e){out('אין חיבור לאינטרנט כרגע');return}
+  if(latest&&latest<=APP_VER){out('יש לך את הגרסה העדכנית ('+APP_VER+')');return}
+  out('נמצאה גרסה '+(latest||'חדשה')+', מעדכן…');
+  try{const r=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(r){await r.update();const w=r.waiting||r.installing;if(w)w.postMessage&&w.postMessage('skipWaiting')}}catch(e){}
+  setTimeout(()=>location.reload(),900)}
 function artIc(isCur){return isCur&&!aP()?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
@@ -1855,8 +1876,7 @@ function step(d){
 }
 async function sync(){
   $('pp').innerHTML=aP()?IC.play:IC.pause;
-  try{if(!aP()&&!wl&&navigator.wakeLock){wl=await navigator.wakeLock.request('screen');wl.onrelease=()=>{wl=null}}
-  else if(aP()&&wl){await wl.release();wl=null}}catch(e){}
+  await wakeSync();
   updPlay();
 }
 au.onplay=sync;au.onpause=sync;
@@ -2747,9 +2767,9 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=172;
+const APP_VER=173;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
@@ -2790,6 +2810,8 @@ setTimeout(()=>{try{whatsNew()}catch(e){}},0);
         (code?'<div class="gr"><div class="k">הקוד</div><span class="v" id="cv">'+masked+'</span><button id="cshow">הצג</button></div>'+
           '<div class="gr"><div class="k">קישור הצטרפות למאמנים</div><button id="clink">העתק קישור</button></div>':'')+
         '<div class="gr"><div class="k">'+(code?'החלפת ספרייה':'הזנת קוד ספרייה')+'</div><button id="cchg">'+(code?'החלף קוד':'הזן קוד')+'</button></div></div>':'')+
+      '<div class="gl">מסך ועדכונים</div><div class="grp"><button class="gr gtg" id="awk" role="switch"><div class="k">השאר את המסך דלוק<small>כל עוד האפליקציה פתוחה, גם כשלא מתנגנת מוזיקה</small></div><span class="tgl"><i></i></span></button>'+
+        '<div class="gr"><div class="k">גרסה '+APP_VER+'<small id="updst"></small></div><button id="updbtn">בדיקת עדכון</button></div></div>'+
       '<div class="ver">ספריית שמע לאימונים · גרסה '+APP_VER+'</div></div>';
     document.body.appendChild(o);
     const st=$('store');o.querySelector('#stg').appendChild(st);storeOpen=true;st.hidden=!D;if(D){st._h='';storeUI()}else{o.querySelector('#stg').innerHTML='<div class="gr"><div class="k" style="color:var(--muted)">האחסון בענן זמין אחרי חיבור לספרייה</div></div>'}
@@ -2799,6 +2821,10 @@ setTimeout(()=>{try{whatsNew()}catch(e){}},0);
     const cs=o.querySelector('#cshow');if(cs)cs.onclick=()=>{$('cv').textContent=code;cs.remove()};
     const cl=o.querySelector('#clink');if(cl)cl.onclick=async()=>{const u=location.origin+location.pathname+'#code='+code;
       try{if(navigator.share){await navigator.share({title:'ספריית שמע לאימונים',text:'הקישור לספריית השמע שלנו',url:u});return}await navigator.clipboard.writeText(u);cl.textContent='✓ הועתק'}catch(e){if(e&&e.name==='AbortError')return;prompt('העתק את הקישור:',u)}};
+    {const aw=o.querySelector('#awk'),upd=()=>{aw.classList.toggle('off',!keepAwake);aw.setAttribute('aria-checked',keepAwake)};upd();
+      if(!('wakeLock' in navigator)){aw.disabled=true;aw.querySelector('small').textContent='המכשיר או הדפדפן הזה לא מאפשרים להשאיר את המסך דלוק'}
+      aw.onclick=()=>{keepAwake=!keepAwake;try{localStorage.setItem('keepAwake',keepAwake?'1':'0')}catch(e){}upd();wakeSync()};
+      const ub=o.querySelector('#updbtn'),us=o.querySelector('#updst');ub.onclick=()=>{ub.disabled=true;checkUpdate(t=>{us.textContent=t}).finally(()=>{ub.disabled=false})}}
     const cc=o.querySelector('#cchg');if(cc)cc.onclick=()=>{close();setTimeout(()=>window.libCodeDialog&&libCodeDialog(),220)};
   }
   pill.onclick=sheet;$('setbtn').onclick=sheet;
