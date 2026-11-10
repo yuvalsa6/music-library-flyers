@@ -821,6 +821,7 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
 #selbar .sba button.dz,#selbar .sba button.dz svg{color:var(--danger)}
 #selbar .sba button:disabled{opacity:.4;cursor:default}
 @media (prefers-reduced-motion:reduce){#selbar{animation:none}}
+.rcdiag{display:block;margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--soft);font-size:11.5px!important;line-height:1.5;color:var(--muted);text-align:start;direction:rtl;unicode-bidi:plaintext}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -2458,10 +2459,16 @@ function attach(id){
     if(d.hb!==lastN){lastN=d.hb;lastRecv=Date.now()}
     follow(d);devUI()};
   const offs=[];
-  try{offs.push(D.doc('ctl/'+id).onSnapshot(s=>{apply(s.exists?JSON.parse(JSON.stringify(s.data()||{})):null)},()=>{}))}catch(e){}
-  try{if(RM)offs.push(RM.on('state',m=>{const d=m&&m.data;if(!d||m.isMe||d.src!==id)return;apply(JSON.parse(JSON.stringify(d)))},()=>{}))}catch(e){}
+  rcDiag={cloud:0,direct:0,last:0,err:''};
+  try{offs.push(D.doc('ctl/'+id).onSnapshot(s=>{rcDiag.cloud++;rcDiag.last=Date.now();try{apply(s.exists?JSON.parse(JSON.stringify(s.data()||{})):null)}catch(e){rcDiag.err=String(e&&e.message||e)}},e=>{rcDiag.err='ctl: '+((e&&e.code)||e)}))}catch(e){rcDiag.err=String(e&&e.message||e)}
+  try{if(RM)offs.push(RM.on('state',m=>{const d=m&&m.data;if(!d||m.isMe||d.src!==id)return;rcDiag.direct++;rcDiag.last=Date.now();try{apply(JSON.parse(JSON.stringify(d)))}catch(e){rcDiag.err=String(e&&e.message||e)}},()=>{}))}catch(e){}
   ctlUnsub=()=>offs.forEach(f=>{try{f()}catch(e){}});
   devUI()}
+let rcDiag=null;
+function rcDiagText(){if(!remote||!rcDiag)return'';const ago=rcDiag.last?Math.round((Date.now()-rcDiag.last)/1000)+' שנ׳':'אף פעם';let d=NaN,t=NaN;try{d=au.duration;t=au.currentTime}catch(e){}
+  return 'אבחון · גרסה '+APP_VER+' · ישיר '+(RM&&RM.isOpen&&RM.isOpen(target)?'פתוח':'סגור')+' · עדכונים: ישיר '+rcDiag.direct+', ענן '+rcDiag.cloud+' · אחרון לפני '+ago+
+    ' · מצב: '+(PS?((PS.playing?'מנגן':'עוצר')+' '+fmt(PS.pos||0)+'/'+fmt(PS.dur||0)+(PS.id?'':' בלי שיר')):'אין')+' · אצלי: '+(rPlaying?'מנגן':'עוצר')+' '+(isFinite(t)?fmt(t):'?')+'/'+(isFinite(d)?fmt(d):'?')+
+    ' · פס: '+($('devnow')&&$('devnow').hidden?'מוסתר':'מוצג')+(rcDiag.err?' · שגיאה: '+rcDiag.err:'')}
 function detach(){if(ctlUnsub){try{ctlUnsub()}catch(e){}ctlUnsub=null}target=null;goStandalone();devUI()}
 function goRemote(){remote=true;isHost=false;au.muted=true;stopGap();rPlaying=!!(PS&&PS.playing);vBase=(PS&&PS.pos)||0;vAt=Date.now();devUI();try{sync()}catch(e){}if(rPlaying&&!raf)raf=requestAnimationFrame(tick)}
 function goStandalone(){if(!remote)return;remote=false;au.muted=false;rawPause();devUI();try{sync()}catch(e){}}
@@ -2543,6 +2550,7 @@ async function pickSource(){
   const h=document.createElement('div');h.className='cmh';h.innerHTML='<b></b><small></small>';
   h.firstChild.textContent=list.length?'שליטה במכשיר אחר':'אין מכשיר אחר פתוח';
   h.lastChild.textContent=list.length?'בוחרים את המכשיר שמחובר לרמקול. כל מה שלוחצים כאן יקרה שם.':'פותחים את האפליקציה במכשיר שמחובר לרמקול, עם אותו קוד ספרייה, והוא יופיע כאן.';
+  if(remote){const dg=document.createElement('small');dg.className='rcdiag';dg.textContent=rcDiagText();h.appendChild(dg);const iv=setInterval(()=>{if(!dg.isConnected)return clearInterval(iv);dg.textContent=rcDiagText()},1000)}
   const i=await pick('שליטה במכשיר אחר',opts,h);const x=opts[i];if(x&&x.f)x.f()}
 $('devhere').onclick=pickSource;
 {const sv=$('sv');sv.style.cursor='pointer';sv.addEventListener('click',async()=>{try{if(!(navigator.storage&&navigator.storage.persist)){sv.textContent='הדפדפן לא תומך בבקשת אחסון קבוע';return}
@@ -2652,7 +2660,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=164;
+const APP_VER=165;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
