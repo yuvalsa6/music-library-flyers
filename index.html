@@ -840,6 +840,7 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
 .sheet #updbtn:disabled{opacity:.5}
 /* עוצמה בנגן */
 .lvol{display:flex;align-items:center;gap:8px;flex:1 1 100%;min-width:0;direction:rtl}
+.lvol[hidden]{display:none!important}
 .lvol>span{font-size:14px;color:var(--muted);flex:none}
 .lvol input{flex:1;min-width:0;accent-color:var(--accent);height:30px;margin:0;direction:ltr}
 .lvol b{flex:none;min-width:40px;font-size:13px;font-weight:600;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
@@ -1625,10 +1626,17 @@ async function checkUpdate(out){out('בודק…');let latest=0;
 /* עוצמה בנגן הזה: משנים או מחזירים את העוצמה גם במכשיר עצמו (לא רק מרחוק).
    באייפון עוצמה מתחת ל-100% עוברת דרך מערכת השמע של iOS ומאטה את התגובה; ב-100% אפשר להחזיר תגובה מיידית (טעינה מחדש) */
 function lvolShow(){const e=$('lvol');if(!e)return;const v=Math.round(VOL*100);if(document.activeElement!==e)e.value=String(v);$('lvolt').textContent=v+'%';
-  const fx=$('lvfix');if(fx)fx.hidden=!(typeof IOSV!=='undefined'&&IOSV&&gainOn&&VOL>=0.999)}
+  const fx=$('lvfix');if(fx)fx.hidden=true;
+  const w=$('lvolw');if(w)w.hidden=!!(typeof IOSV!=='undefined'&&IOSV&&!(gainOn&&lastRemoteT&&Date.now()-lastRemoteT<60000))}
 {const e=$('lvol');if(e){e.addEventListener('input',()=>{const v=(+e.value)/100;$('lvolt').textContent=Math.round(v*100)+'%';applyVol(v);if(isHost)rcPub(true);lvolShow()})}}
-{const fx=$('lvfix');if(fx)fx.onclick=()=>{if(!aP()){showOk('עצור את המוזיקה ולחץ שוב, כדי לא לקטוע אותה');return}location.reload()}}
 setInterval(lvolShow,1000);setTimeout(lvolShow,500);
+/* iPhone: the slower sound route is used only while another device controls this one.
+   When control ends: volume back to 100% (only the side buttons), and the next time the app goes to the
+   background with nothing playing it reloads quietly, so it's immediate again when you come back */
+let routeReset=false;
+function ctlEnded(){if(typeof IOSV==='undefined'||!IOSV)return;if(VOL<1){applyVol(1);try{lvolShow()}catch(e){}}if(gainOn)routeReset=true}
+setInterval(()=>{if(typeof IOSV!=='undefined'&&IOSV&&gainOn&&!remote&&lastRemoteT&&Date.now()-lastRemoteT>60000){lastRemoteT=0;ctlEnded()}},5000);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&routeReset&&aP()&&!remote&&Date.now()-lastRemoteT>60000){try{sessionStorage.setItem('quietReload','1')}catch(e){}location.reload()}});
 function artIc(isCur){return isCur&&!aP()?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
@@ -2543,7 +2551,7 @@ function applyVol(v,remoteCmd){v=Math.max(0,Math.min(1,v));VOL=v;try{localStorag
 /* באייפון אי אפשר לשנות עוצמה בלי לחיצה אחת על המסך של המכשיר המנגן */
 function volBanner(on){let b=$('volbn');if(!on){if(b)b.remove();return}if(b)return;b=document.createElement('button');b.id='volbn';
   b.textContent='כדי לשנות כאן עוצמה מהמכשיר השני, לחץ פעם אחת';b.onclick=()=>{unlockAcx();setTimeout(()=>applyVol(VOL),60);b.remove()};document.body.appendChild(b)}
-if(VOL<1)setTimeout(()=>applyVol(VOL),0);
+if(VOL<1){if(IOSV){VOL=1;try{localStorage.setItem('vol','1')}catch(e){}}else setTimeout(()=>applyVol(VOL),0)}
 function rcPub(force){if(!(D||rmOk())||!isHost)return;if(window.rsBusyNow&&!force)return;const now=Date.now();
   if(!force&&now-pubLast<350){clearTimeout(pubTm);pubTm=setTimeout(()=>rcPub(true),350);return}
   pubLast=now;hbn++;
@@ -2588,7 +2596,7 @@ function detach(){if(ctlUnsub){try{ctlUnsub()}catch(e){}ctlUnsub=null}target=nul
 function goRemote(){remote=true;isHost=false;au.muted=true;stopGap();rPlaying=!!(PS&&PS.playing);vBase=(PS&&PS.pos)||0;vAt=Date.now();devUI();try{sync()}catch(e){}if(rPlaying&&!raf)raf=requestAnimationFrame(tick)}
 function goStandalone(){if(!remote)return;remote=false;au.muted=false;rawPause();devUI();try{sync()}catch(e){}}
 function takeOver(){if(!remote)return;const old=target,vp=vpos(),P0=PS?{...PS}:null,wasPl=!!(P0&&P0.playing);
-  if(old&&wasPl)rcPost('pause',null,old);if(ctlUnsub){try{ctlUnsub()}catch(e){}ctlUnsub=null}target=null;remote=false;isHost=true;au.muted=false;
+  if(old){if(wasPl)rcPost('pause',null,old);rcPost('bye',null,old)}if(ctlUnsub){try{ctlUnsub()}catch(e){}ctlUnsub=null}target=null;remote=false;isHost=true;au.muted=false;
   /* the song that plays on the other device, from its last state (not whatever was loaded here before) */
   const it=P0&&P0.id?items.find(i=>i.id===P0.id):null;
   if(!it){rawPause();if(P0&&P0.id)showErr('המוזיקה שניגנה במכשיר השני לא נמצאת כאן');hbn=((P0&&P0.hb)||0)+1;rcPub(true);devUI();return}
@@ -2609,7 +2617,7 @@ function resumeFix(){if(!resumeAt||remote)return;if(curId!==resumeAt.id||Date.no
   if(Math.abs(cts.get.call(au)-w)>1.5)rawSeek(w);if(resumeAt.pl&&NPD.get.call(au))rawPlay().catch(()=>{});
   const it=cur();if(it&&it.blob&&au.src.startsWith('blob:')&&Math.abs(cts.get.call(au)-w)<2)setTimeout(()=>{if(resumeAt&&curId===resumeAt.id&&Math.abs(cts.get.call(au)-resumeWant())<2)resumeAt=null},1500)}
 ['loadedmetadata','canplay','playing'].forEach(ev=>au.addEventListener(ev,resumeFix));
-function stopControl(){if(!remote)return;detach();try{rawPause();au.removeAttribute('src');au.load()}catch(e){}curId=null;curQ=null;doneQ.clear();indQ=null;try{emptyPlayer()}catch(e){}$('player').hidden=true;render();showOk('השליטה הופסקה. המכשיר השני ממשיך לנגן')}
+function stopControl(){if(!remote)return;try{target&&rcPost('bye',null,target)}catch(e){}detach();try{rawPause();au.removeAttribute('src');au.load()}catch(e){}curId=null;curQ=null;doneQ.clear();indQ=null;try{emptyPlayer()}catch(e){}$('player').hidden=true;render();showOk('השליטה הופסקה. המכשיר השני ממשיך לנגן')}
 function follow(d){
   if(d&&typeof d.vol==='number'&&Date.now()>=optVol)volShow(d.vol);{const w=$('devvolw');if(w)w.classList.toggle('blk',!!(d&&d.vb))}
   if(Date.now()<optNav&&d.id!==curId)return;
@@ -2639,6 +2647,7 @@ const volShow=v=>{const e=$('devvol');if(!e)return;e.value=String(Math.round(v*1
   ['pointerdown','touchstart'].forEach(ev=>e.addEventListener(ev,x=>x.stopPropagation(),{passive:true}))}}
 function rcHandle(c){const t=c.type,a=c.arg;
   if(t==='hello'){rcPub(true);return}
+  if(t==='bye'){lastRemoteT=0;ctlEnded();return}
   if(t==='play')startPlay();
   else if(t==='pause')rawPause();
   else if(t==='seek'){if(typeof a==='number')rawSeek(a)}
@@ -2797,9 +2806,9 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=175;
+const APP_VER=176;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. כשהשליטה נגמרת העוצמה חוזרת לכפתורי הצד, והתגובה חוזרת להיות מיידית בפתיחה הבאה','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
