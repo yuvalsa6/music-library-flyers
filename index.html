@@ -796,13 +796,6 @@ body:not(.noplay):has(#player.min) #okbar{bottom:calc(var(--dockh,150px) + 14px)
 .sgi.on{background:var(--fill);color:#fff}
 .sgi.sgo{color:var(--muted)}
 .player.full .sgb,.player.full .sgr{background:var(--soft)}
-/* תיקיות לפי צוות */
-.tdd{gap:12px;min-height:58px;background:var(--soft)!important}
-.tdd .fic{width:36px;height:36px;border-radius:10px}.tdd .fic svg{width:20px;height:20px}
-.xpr .fic{flex:none;width:40px;height:40px;border-radius:10px}.xpr .fic svg{width:22px;height:22px}
-.xpr small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-#store .hping{border:0;background:var(--soft);color:var(--accent);font:inherit;font-weight:600;font-size:14px;border-radius:10px;padding:8px 12px;margin-top:8px;cursor:pointer}
-#store .hpr{font-size:13.5px}
 /* בחירה מרובה */
 .selck{display:none}
 body.selmode #list .selck{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:52px;margin-inline-end:-6px;touch-action:none;cursor:pointer;color:transparent}
@@ -1916,52 +1909,6 @@ function suggestPlace(news){
   const rows=news.filter(i=>i&&!isDead(i)).map(it=>{const b=bestFolder(it);return b?{it,cat:b.cat,sub:b.sub}:null}).filter(Boolean);
   if(!rows.length)return;
   moveDialog('לסדר את השירים החדשים בתיקיות?',(rows.length===1?'לשיר החדש יש':rows.length+' מהשירים החדשים יש להם')+' שם שמתאים לתיקייה קיימת:',rows,true)}
-/* ייבוא של כמה קבצים: מוזיקות עם אותו שם צוות (למשל "רוני ושירז באלאנס", "רוני ושירז טמפ")
-   ואין להן תיקייה. מציעים לפתוח תיקייה על שם הצוות ולהעביר אליה */
-const TYPEW=new Set(['באלאנס','בלאנס','בלנס','באלנס','טמפ','טמפו','טמפּ','שלישי','קומבינציה','קומבו','דינמי','סטטי','תרגיל','balance','tempo','combined','combo','final','מעודכן','חדש','סופי','גרסה','this','message','was','edited']);
-function teamOf(name){const raw=String(name||'').replace(/this message was edited/ig,' ').replace(/\.[a-z0-9]{2,4}$/i,'').replace(/[^\p{L}\p{N}\s]+/gu,' ');
-  const w=raw.split(/\s+/).filter(x=>x&&!TYPEW.has(x.toLowerCase())&&!/^\d+$/.test(x)&&!/^(aud|ptt|wa\d+)/i.test(x));
-  return w.length?w.join(' '):''}
-/* list: הקבצים החדשים. pool: מוזיקות קיימות שלא בתיקייה (בשורש הקטגוריה או ביבוא) שאפשר לצרף לאותו צוות */
-function teamGroups(list,pool){const m=new Map(),key=it=>{const t=teamOf(it.name);const k=t?nameToks(t).join(' '):'';return[t,k]};
-  list.forEach(it=>{const[t,k]=key(it);if(!k)return;if(!m.has(k))m.set(k,{name:t,items:[]});m.get(k).items.push(it)});
-  (pool||[]).forEach(it=>{const[,k]=key(it);if(k&&m.has(k)&&!m.get(k).items.includes(it))m.get(k).items.push(it)});
-  return[...m.values()].filter(g=>g.items.length>=2)}
-function teamSuggest(list,parent){list=(list||[]).filter(i=>i&&!isDead(i));if(!list.length)return;
-  const dest=parent&&parent.cat&&parent.cat!==INBOX?{cat:parent.cat,sub:parent.sub||''}:{cat:(curCat&&cats.includes(curCat)&&curCat!==INBOX)?curCat:(vcats()[0]||cats.find(c=>c!==INBOX)||''),sub:''};
-  if(!dest.cat)return;
-  const ids=new Set(list.map(i=>i.id));
-  const pool=items.filter(i=>!ids.has(i.id)&&!isDead(i)&&(i.cat===INBOX||(i.cat===dest.cat&&!(i.sub||''))||(dest.sub&&i.cat===dest.cat&&(i.sub||'')===dest.sub)));
-  const gs=teamGroups(list,pool);if(!gs.length)return;
-  const wait=()=>{if(document.querySelector('.pkov,#ask:not([hidden]),.nfov'))return setTimeout(wait,400);teamDialog(gs,dest,ids)};setTimeout(wait,300)}
-function teamDialog(gs,parent,newIds){
-  let dest={cat:parent.cat,sub:parent.sub||''};
-  const sel=new Set(gs.map((g,i)=>i));
-  const o=document.createElement('div');o.className='pkov as';const c=document.createElement('div');c.className='ash';c.setAttribute('role','dialog');c.setAttribute('aria-label','תיקיות לפי צוות');
-  const g=document.createElement('div');g.className='asg';
-  const h=document.createElement('div');h.className='ahd cmh';h.innerHTML='<b></b><small></small>';
-  h.firstChild.textContent=gs.length===1?'לפתוח תיקייה לצוות "'+gs[0].name+'"?':'לפתוח תיקיות לפי צוות?';
-  h.lastChild.textContent='יש כאן כמה מוזיקות של אותו צוות. אפשר לפתוח לכל צוות תיקייה ולהעביר אליה את המוזיקות שלו.';
-  const dw=document.createElement('button');dw.className='aso tdd';
-  const drawDest=()=>{dw.innerHTML='<span class="fic">'+(dest.sub?ICN.folder:ICN.lib)+'</span>';dw.style.setProperty('--fh',hueOf(dest.sub?dest.sub.split(' / ').pop():dest.cat));const t=document.createElement('span');t.className='aot';t.textContent='ייפתחו בתוך: '+locStr(dest.cat,dest.sub);const sm=document.createElement('small');sm.textContent='לחץ כדי לבחור מקום אחר';t.appendChild(sm);dw.appendChild(t);dw.dataset.ic=dw.textContent};drawDest();
-  const L=document.createElement('div');L.className='fpl';g.append(h,dw,L);
-  const ok=document.createElement('button');ok.className='asc xok';const x=document.createElement('button');x.className='asc';x.textContent='לא עכשיו';
-  const upd=()=>{const n=[...sel].reduce((a,i)=>a+gs[i].items.length,0);ok.textContent=sel.size?(sel.size===1?'פתיחת תיקייה והעברת '+n+' מוזיקות':'פתיחת '+sel.size+' תיקיות והעברת '+n+' מוזיקות'):'בחר צוות';ok.disabled=!sel.size;ok.dataset.ic=ok.textContent};
-  gs.forEach((gr,i)=>{const b=document.createElement('button');b.className='aso xpr on';b.setAttribute('aria-pressed','true');b.style.setProperty('--fh',hueOf(gr.name));
-    b.innerHTML='<span class="xck">'+ICN.check+'</span><span class="fic">'+ICN.folder+'</span>';const t=document.createElement('span');t.className='aot';t.textContent=gr.name;
-    const sm=document.createElement('small');const old=gr.items.filter(it=>newIds&&!newIds.has(it.id)).length;sm.textContent=gr.items.length+' מוזיקות'+(old?' ('+(old===1?'אחת כבר בספרייה':old+' כבר בספרייה')+')':'')+': '+gr.items.map(it=>it.name).join(' · ');t.appendChild(sm);b.appendChild(t);b.dataset.ic=b.textContent;
-    b.onclick=()=>{sel.has(i)?sel.delete(i):sel.add(i);b.classList.toggle('on');b.setAttribute('aria-pressed',sel.has(i));upd()};L.appendChild(b)});
-  const fin=()=>{if(o.dataset.done)return;o.dataset.done=1;o.classList.add('out');setTimeout(()=>o.remove(),180)};
-  dw.onclick=async()=>{o.style.visibility='hidden';const r=await folderPicker('איפה לפתוח את התיקיות?',dest);o.style.visibility='';if(r){dest=r;drawDest()}};
-  x.onclick=fin;o.onclick=e=>{if(e.target===o)fin()};
-  ok.onclick=()=>{let moved=0;const made=[];
-    [...sel].forEach(i=>{const gr=gs[i],path=dest.sub?dest.sub+' / '+gr.name:gr.name,fk=dest.cat+'||'+path;if(!folders.includes(fk))folders.push(fk);made.push(gr.name);
-      gr.items.forEach(it=>{it.cat=dest.cat;it.sub=path;put(it);moved++})});
-    fin();saveLS();
-    if(dest.sub){const sg=dest.sub.split(' / ');for(let k=1;k<=sg.length;k++)openK.add(dest.cat+'||'+sg.slice(0,k).join(' / '))}
-    if(view!=='inbox'){filter=dest.cat;curCat=dest.cat}render();
-    showOk((made.length===1?'נפתחה תיקייה "'+made[0]+'"':'נפתחו '+made.length+' תיקיות')+' והועברו אליה'+(made.length===1?'':'ן')+' '+moved+' מוזיקות')};
-  upd();c.append(g,ok,x);o.appendChild(c);document.body.appendChild(o)}
 function destPicker(n,defCat,defSub){return folderPicker('להוסיף '+(n===1?'שיר אחד':n+' שירים')+' לאיפה?',{cat:defCat,sub:defSub||''})}
 $('file').onchange=async e=>{
   const files=[...e.target.files].filter(f=>/^(audio|video)/.test(f.type)||/\.(mp3|m4a|wav|aac|ogg|opus|amr|flac|wma|mp4|3gp)$/i.test(f.name));e.target.value='';
@@ -1975,7 +1922,7 @@ $('file').onchange=async e=>{
     items.push(it);putBlob(it);put(it);toCloud(it);newIts.push(it)});
   filter=cat;curCat=cat;curSub=sub;
   openK.clear();if(sub){const sg=sub.split(' / ');for(let i=1;i<=sg.length;i++)openK.add(cat+'||'+sg.slice(0,i).join(' / '))}
-  render();suggestPlace(newIts);teamSuggest(newIts.filter(i=>!bestFolder(i)),{cat,sub});
+  render();suggestPlace(newIts);
 };
 /* ייבוא zip של ייצוא צ'אט וואטסאפ: קורא את הקובץ בלי ספרייה, ומחלץ רק קבצי שמע */
 async function zipEntries(file){
@@ -2036,7 +1983,6 @@ $('zipf').onchange=async e=>{
       if(k%3===0)render();await new Promise(r=>setTimeout(r,0))}
     if(view!=='inbox'&&added>auto)setView('inbox');else render();
     {const msg='יובאו '+added+' מוזיקות'+(auto?' · '+auto+' מוינו לבד לתיקיות':'')+(added-auto?' · '+(added-auto)+' ממתינים למיון':'')+(named?' · '+named+' בשם מההודעה שאחרי הקובץ':'')+(skipped?' · '+skipped+' כבר קיימים':'')+(bad?' · '+bad+' נכשלו':'');if(bad)showErr(msg);else showOk(msg)}
-    teamSuggest(zipNew.filter(i=>i.cat===INBOX),null);
   }catch(err){showErr('הייבוא נכשל: '+((err&&err.message)||err))}
   stat()};
 $('inbtn').onclick=()=>setView(view==='inbox'?(preIn==='queue'?'queue':'music'):'inbox');
@@ -2465,7 +2411,8 @@ function rcPost(type,arg,to){if(!D&&!rmOk())return;const c={cid:ME+'.'+Date.now(
 function rcIn(c){if(!c||typeof c!=='object')return;
   if(c.cid){if(cmdSeen.has(c.cid))return;cmdSeen.add(c.cid)}
   if(c.from===ME||c.t<rcStart-3000)return;if(c.to&&c.to!==ME)return;
-  if(!isHost&&!(c.to===ME&&c.type==='item'))return;
+  if(c.to===ME&&!remote){lastRemoteT=Date.now();if(!isHost)claim()}
+  if(!isHost)return;
   try{rcHandle(c)}catch(e){}}
 function rcSend(type,arg){if(!D&&!rmOk())return;
   if(type==='seek'){if(!seekT){rcPost('seek',arg);seekArg=null;seekT=setTimeout(()=>{seekT=0;if(seekArg!=null){rcPost('seek',seekArg);seekArg=null}},120)}else seekArg=arg;return}
@@ -2503,6 +2450,7 @@ function attach(id){
   if(!id){target=null;goStandalone();devUI();return}
   if(isHost)rcRelease();try{rawPause()}catch(e){}
   target=id;PS=null;lastN=null;lastRecv=Date.now();if(!remote)goRemote();try{RM&&RM.connect&&RM.connect(id)}catch(e){}
+  lastHello=Date.now();rcPost('hello',null,id);
   let lastT=0;
   const apply=d=>{if(target!==id)return;
     if(d&&d.t){if(d.t<lastT)return;lastT=d.t}
@@ -2546,6 +2494,7 @@ const volShow=v=>{const e=$('devvol');if(!e)return;e.value=String(Math.round(v*1
   e.addEventListener('change',()=>{clearTimeout(volTm);optVol=Date.now()+1200;rcSend('vol',(+e.value)/100)});
   ['pointerdown','touchstart'].forEach(ev=>e.addEventListener(ev,x=>x.stopPropagation(),{passive:true}))}}
 function rcHandle(c){const t=c.type,a=c.arg;
+  if(t==='hello'){rcPub(true);return}
   if(t==='play')startPlay();
   else if(t==='pause')rawPause();
   else if(t==='seek'){if(typeof a==='number')rawSeek(a)}
@@ -2611,7 +2560,9 @@ $('devhere').onclick=pickSource;
 addEventListener('pagehide',()=>{if(isHost)rcRelease()});
 setInterval(()=>{if(remote){try{paint();devNow()}catch(e){}}},250);
 let idleSince=0;
-setInterval(()=>{if(remote&&Date.now()-lastRecv>20000)detach();if(isHost&&D){if(au.paused){if(!idleSince)idleSince=Date.now();else if(Date.now()-idleSince>90000){idleSince=0;rcRelease();return}}else idleSince=0;rcPub(true)}else idleSince=0},2500);
+let lastHello=0,lastRemoteT=0;
+setInterval(()=>{if(remote&&target&&Date.now()-lastHello>20000){lastHello=Date.now();rcPost('hello',null,target)}
+  if(remote&&Date.now()-lastRecv>45000)detach();if(isHost&&D){if(au.paused&&Date.now()-lastRemoteT>60000){if(!idleSince)idleSince=Date.now();else if(Date.now()-idleSince>90000){idleSince=0;rcRelease();return}}else idleSince=0;rcPub(true)}else idleSince=0},2500);
 const DEAD=['fa10509c01445cbcbe6ad001f9310de0','ee76406a05a094d839fdb4f9b5aab5a3','a6feb75370fac56b41579f597e52925b'];
 const isDead=i=>!!(i&&i.asset&&DEAD.some(d=>String(i.asset).includes(d)));
 function purgeDead(){const bad=items.filter(isDead);if(!bad.length)return;
@@ -2632,7 +2583,7 @@ const P2P=(()=>{
   const drop=(id,why)=>{const p=peers.get(id);if(!p)return;peers.delete(id);clearInterval(p.ping);clearTimeout(p.to);try{p.dc&&p.dc.close()}catch(_){}try{p.pc.close()}catch(_){}try{devUI()}catch(_){}
     if(why&&p.init&&remote&&target===id){const n=(fails.get(id)||0)+1;fails.set(id,n);setTimeout(()=>{if(remote&&target===id&&!peers.has(id))connect(id)},Math.min(30000,2000*n))}};
   const wire=(id,p,dc)=>{p.dc=dc;
-    dc.onopen=()=>{p.last=Date.now();clearTimeout(p.to);fails.delete(id);p.ping=setInterval(()=>{try{dc.readyState==='open'&&dc.send('{"e":"ping"}')}catch(_){}},1500);try{devUI()}catch(_){}if(isHost)rcPub(true)};
+    dc.onopen=()=>{p.last=Date.now();clearTimeout(p.to);fails.delete(id);if(!p.init&&!remote){lastRemoteT=Date.now();if(!isHost)claim()}p.ping=setInterval(()=>{try{dc.readyState==='open'&&dc.send('{"e":"ping"}')}catch(_){}},1500);try{devUI()}catch(_){}if(isHost)rcPub(true)};
     dc.onmessage=ev=>{p.last=Date.now();let m;try{m=JSON.parse(ev.data)}catch(_){return}if(!m||m.e==='ping')return;if(m.e==='state'&&m.d&&target===id)lastRecv=Date.now();fire(m.e,m.d,id)};
     dc.onclose=()=>drop(id,'closed')};
   const mk=(id,init)=>{const pc=new RTCPeerConnection(ICE),p={pc,dc:null,init,last:0,ping:0,to:0};peers.set(id,p);
@@ -2701,7 +2652,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=162;
+const APP_VER=164;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
