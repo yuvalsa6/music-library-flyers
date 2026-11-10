@@ -684,6 +684,15 @@ body.iview #chips,body.iview #subs,body.iview #vmusic .bar{display:none}
 .sugg::after{content:'';position:absolute;inset:-6px 0}
 .sugg svg{flex:none;width:15px;height:15px}
 .sugg span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.iview #tabbar{display:none}
+.hbtn{position:relative}
+#inbtn.on{background:var(--fill);color:#fff}
+#inbtn .bdg{position:absolute;top:-3px;inset-inline-start:-3px;min-width:20px;height:20px;padding:0 5px;box-sizing:border-box;border-radius:10px;background:var(--fill);color:#fff;font-size:12px;font-weight:700;line-height:20px;text-align:center;box-shadow:0 0 0 2px var(--bg)}
+#inbtn.on .bdg{background:var(--surface);color:var(--accent)}
+.ipbar{display:flex;align-items:center;gap:8px;margin:8px 0 12px}
+.ipbar h2{flex:1;margin:0;font-size:22px;font-weight:800}
+.iback{display:inline-flex;align-items:center;gap:2px;min-height:44px;padding:0 10px 0 4px;border:0;border-radius:999px;background:var(--soft);color:var(--accent);font:inherit;font-size:15px;font-weight:600;cursor:pointer}
+.iback svg{width:20px;height:20px}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -692,6 +701,7 @@ body.iview #chips,body.iview #subs,body.iview #vmusic .bar{display:none}
 <body>
 <div id="app"><header class="top">
   <div class="tt"><h1>ספריית שמע לאימונים</h1><button id="syncpill" class="spill" aria-label="מצב סנכרון והגדרות"><span class="sp"><i></i><span>מתחבר…</span></span></button></div>
+  <button id="inbtn" class="hbtn" aria-label="יבוא מוואטסאפ"><svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 13.5V18a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4.5"/><path d="M4 13.5h4l1.5 2.5h5l1.5-2.5h4"/><path d="M12 3.5v8.5m-3.5-3.5L12 12l3.5-3.5"/></svg><span class="bdg" hidden></span></button>
   <button id="setbtn" class="hbtn" aria-label="הגדרות"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Zm7.43-2.53c.04-.32.07-.64.07-.97s-.03-.66-.07-1l2.11-1.63a.5.5 0 0 0 .12-.64l-2-3.46a.5.5 0 0 0-.61-.22l-2.49 1a7.3 7.3 0 0 0-1.69-.98l-.38-2.65A.49.49 0 0 0 14 2h-4a.49.49 0 0 0-.49.42l-.38 2.65c-.61.25-1.17.58-1.69.98l-2.49-1a.5.5 0 0 0-.61.22l-2 3.46a.49.49 0 0 0 .12.64L4.57 11c-.04.34-.07.67-.07 1s.03.65.07.97l-2.11 1.66a.49.49 0 0 0-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1.01c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.43.49.43h4c.25 0 .46-.19.49-.43l.38-2.65c.61-.25 1.17-.58 1.69-.98l2.49 1.01c.22.08.49 0 .61-.22l2-3.46a.5.5 0 0 0-.12-.64l-2.11-1.66Z"/></svg></button>
 </header>
 <div id="sv" class="sub" aria-live="polite"></div>
@@ -1226,8 +1236,10 @@ function itemMenu(it,qe,d,qb){
 function sortTo(it,cat,sub){it.cat=cat;it.sub=sub||'';put(it);render();showOk('✓ "'+it.name+'" הועבר ל"'+(sub?sub.split(' / ').pop():cat)+'"')}
 async function sortOne(it){const r=await folderPicker('לאיזו תיקייה להעביר?',null);if(r)sortTo(it,r.cat,r.sub)}
 function inboxView(L){
+  const pb=document.createElement('div');pb.className='ipbar';pb.innerHTML='<button class="iback" aria-label="חזרה">'+ICX.right+'<span>חזרה</span></button><h2>יבוא מוואטסאפ</h2>';
+  pb.firstChild.dataset.ic=pb.firstChild.textContent;pb.firstChild.onclick=()=>setView(preIn==='queue'?'queue':'music');L.appendChild(pb);
   const h=document.createElement('div');h.className='ibx';
-  h.innerHTML='<label for="zipf" class="ibtn">'+ICN.zip+'<span>ייבוא מוואטסאפ</span></label><p>בוואטסאפ פותחים את הצ׳אט, לוחצים על שם הקבוצה ← <b>ייצוא צ׳אט</b> ← <b>צירוף מדיה</b>, ושומרים את קובץ ה-zip. כאן בוחרים את הקובץ, השירים מגיעים לרשימה הזו, ומכאן ממיינים אותם לתיקיות.</p>';
+  h.innerHTML='<label for="zipf" class="ibtn">'+ICN.zip+'<span>בחירת קובץ zip מוואטסאפ</span></label><p>בוואטסאפ פותחים את הצ׳אט, לוחצים על שם הקבוצה ← <b>ייצוא צ׳אט</b> ← <b>צירוף מדיה</b>, ושומרים את קובץ ה-zip. שיר שהשם שלו מתאים לתיקייה קיימת עובר אליה לבד. השאר מחכים כאן למיון.</p>';
   h.querySelector('label').dataset.ic=h.querySelector('label').textContent;L.appendChild(h);
   const list=items.filter(i=>i.cat===INBOX);
   if(!list.length){const e=document.createElement('div');e.className='empty';e.innerHTML='<div class="ei">'+ICN.check+'</div><b>אין שירים שמחכים למיון</b><span>שירים שמייבאים מוואטסאפ יופיעו כאן</span>';L.appendChild(e);return}
@@ -1635,7 +1647,7 @@ async function waChatNames(f,all,aud){
 $('zipf').onchange=async e=>{
   const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
   if(!cats.includes(INBOX)){cats.push(INBOX);saveLS()}
-  const AUDIO=/\.(mp3|m4a|wav|aac|ogg|opus|flac|wma|amr|aif|aiff|caf|3gp|mpga|mp2)$/i,zipNew=[];let added=0,skipped=0,bad=0,named=0;
+  const AUDIO=/\.(mp3|m4a|wav|aac|ogg|opus|flac|wma|amr|aif|aiff|caf|3gp|mpga|mp2)$/i,zipNew=[];let added=0,skipped=0,bad=0,named=0,auto=0;
   try{
     if(typeof DecompressionStream==='undefined')throw new Error('הדפדפן לא תומך בפתיחת zip');
     const all=await zipEntries(f);
@@ -1651,12 +1663,14 @@ $('zipf').onchange=async e=>{
       if(wn.has(base)){named++;let c=2;const b0=nm;while(items.some(i=>i.cat===cat&&i.name===nm))nm=b0+' ('+(c++)+')'}
       try{const blob=await zipRead(f,en),ext=(base.split('.').pop()||'').toLowerCase();
         const it={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:nm,cat,sub,blob:typed(new File([blob],base,{type:MT[ext]||'audio/mpeg'})),ext,added:Date.now(),dur:0,marks:[],notes:'',src:base};
+        const bf=bestFolder(it);if(bf){it.cat=bf.cat;it.sub=bf.sub||'';auto++}
         items.push(it);putBlob(it);put(it);toCloud(it);added++;zipNew.push(it)}catch(err){bad++}
       if(k%3===0)render();await new Promise(r=>setTimeout(r,0))}
-    if(view!=='inbox')setView('inbox');else render();
-    showErr('יובאו '+added+' שירים'+(named?' · '+named+' בשם מההודעה שאחרי הקובץ':'')+(skipped?' · '+skipped+' כבר קיימים':'')+(bad?' · '+bad+' נכשלו':''));{const b=$('errbar');if(b&&!bad){b.style.background='var(--accent)';setTimeout(()=>{try{b.remove()}catch(e){}},5000)}}
+    if(view!=='inbox'&&added>auto)setView('inbox');else render();
+    showErr('יובאו '+added+' שירים'+(auto?' · '+auto+' מוינו לבד לתיקיות':'')+(added-auto?' · '+(added-auto)+' ממתינים למיון':'')+(named?' · '+named+' בשם מההודעה שאחרי הקובץ':'')+(skipped?' · '+skipped+' כבר קיימים':'')+(bad?' · '+bad+' נכשלו':''));{const b=$('errbar');if(b&&!bad){b.style.background='var(--accent)';setTimeout(()=>{try{b.remove()}catch(e){}},5000)}}
   }catch(err){showErr('הייבוא נכשל: '+((err&&err.message)||err))}
   stat()};
+$('inbtn').onclick=()=>setView(view==='inbox'?(preIn==='queue'?'queue':'music'):'inbox');
 $('newcat').onclick=async()=>{
   const n=((await ask('שם הקבוצה או הקטגוריה החדשה'))||'').trim();
   if(!n||cats.includes(n))return;cats.push(n);newCatName=n;saveLS();filter=n;curCat=n;curSub='';render();suggestMove(n,'');
@@ -1773,9 +1787,11 @@ function renderTrack(){
     if(teams.includes(nm)){const x=ico('×',()=>{if(!x.dataset.arm){x.dataset.arm=1;x.textContent='להסיר?';setTimeout(()=>{x.dataset.arm='';x.textContent='×'},3000);return}
       teams=teams.filter(t=>t!==nm);saveLS();fillTeams();renderTrack()},false,'הסרת צוות');h.appendChild(x)}
     c.appendChild(h);Object.keys(TY).forEach(k=>c.appendChild(statRow(TY[k],tr,k,nm,ro)));c.appendChild(statRow('סה״כ הצוות',tr,null));V.appendChild(c)})}
-function tabsR(){const T=$('tabs');T.innerHTML='';const ni=items.filter(i=>i.cat===INBOX).length;[['music','ספרייה'],['queue',PL],['inbox','יבוא']].forEach(([k,l])=>T.appendChild(chip(l+(k==='queue'&&plist.length?' · '+plist.length:'')+(k==='inbox'&&ni?' · '+ni:''),view===k,()=>setView(k))))}
+function tabsR(){const T=$('tabs');T.innerHTML='';[['music','ספרייה'],['queue',PL]].forEach(([k,l])=>T.appendChild(chip(l+(k==='queue'&&plist.length?' · '+plist.length:''),view===k,()=>setView(k))));
+  const ni=items.filter(i=>i.cat===INBOX).length,bd=document.querySelector('#inbtn .bdg');if(bd){bd.hidden=!ni;bd.textContent=ni>99?'99+':ni;$('inbtn').setAttribute('aria-label','יבוא מוואטסאפ'+(ni?' · '+ni+' ממתינים למיון':''));$('inbtn').classList.toggle('on',view==='inbox')}}
+let preIn='music';
 let libSt=null,scrollSt={music:0,queue:0};
-function setView(v){const prev=view;if(prev===v)return;
+function setView(v){const prev=view;if(prev===v)return;if(v==='inbox')preIn=prev;
   try{if(prev!=='inbox')scrollSt[prev==='queue'?'queue':'music']=$('app').scrollTop}catch(e){}
   if(v==='queue'&&filter!==PL)libSt={filter,curCat,curSub};
   view=v;document.body.classList.toggle('qview',v==='queue');document.body.classList.toggle('iview',v==='inbox');$('vmusic').hidden=false;$('vtrack').hidden=true;
@@ -2270,7 +2286,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=152;
+const APP_VER=153;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
