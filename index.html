@@ -1819,13 +1819,20 @@ const TYPEW=new Set(['באלאנס','בלאנס','בלנס','באלנס','טמפ
 function teamOf(name){const raw=String(name||'').replace(/this message was edited/ig,' ').replace(/\.[a-z0-9]{2,4}$/i,'').replace(/[^\p{L}\p{N}\s]+/gu,' ');
   const w=raw.split(/\s+/).filter(x=>x&&!TYPEW.has(x.toLowerCase())&&!/^\d+$/.test(x)&&!/^(aud|ptt|wa\d+)/i.test(x));
   return w.length?w.join(' '):''}
-function teamGroups(list){const m=new Map();list.forEach(it=>{const t=teamOf(it.name);if(!t)return;const k=nameToks(t).join(' ');if(!k)return;if(!m.has(k))m.set(k,{name:t,items:[]});m.get(k).items.push(it)});
+/* list: הקבצים החדשים. pool: מוזיקות קיימות שלא בתיקייה (בשורש הקטגוריה או ביבוא) שאפשר לצרף לאותו צוות */
+function teamGroups(list,pool){const m=new Map(),key=it=>{const t=teamOf(it.name);const k=t?nameToks(t).join(' '):'';return[t,k]};
+  list.forEach(it=>{const[t,k]=key(it);if(!k)return;if(!m.has(k))m.set(k,{name:t,items:[]});m.get(k).items.push(it)});
+  (pool||[]).forEach(it=>{const[,k]=key(it);if(k&&m.has(k)&&!m.get(k).items.includes(it))m.get(k).items.push(it)});
   return[...m.values()].filter(g=>g.items.length>=2)}
-function teamSuggest(list,parent){const gs=teamGroups((list||[]).filter(i=>i&&!isDead(i)));if(!gs.length)return;
-  const wait=()=>{if(document.querySelector('.pkov,#ask:not([hidden]),.nfov'))return setTimeout(wait,400);teamDialog(gs,parent)};setTimeout(wait,300)}
-function teamDialog(gs,parent){
-  let dest=parent&&parent.cat&&parent.cat!==INBOX?{cat:parent.cat,sub:parent.sub||''}:{cat:(curCat&&cats.includes(curCat)&&curCat!==INBOX)?curCat:(vcats()[0]||cats.find(c=>c!==INBOX)||''),sub:''};
+function teamSuggest(list,parent){list=(list||[]).filter(i=>i&&!isDead(i));if(!list.length)return;
+  const dest=parent&&parent.cat&&parent.cat!==INBOX?{cat:parent.cat,sub:parent.sub||''}:{cat:(curCat&&cats.includes(curCat)&&curCat!==INBOX)?curCat:(vcats()[0]||cats.find(c=>c!==INBOX)||''),sub:''};
   if(!dest.cat)return;
+  const ids=new Set(list.map(i=>i.id));
+  const pool=items.filter(i=>!ids.has(i.id)&&!isDead(i)&&(i.cat===INBOX||(i.cat===dest.cat&&!(i.sub||''))||(dest.sub&&i.cat===dest.cat&&(i.sub||'')===dest.sub)));
+  const gs=teamGroups(list,pool);if(!gs.length)return;
+  const wait=()=>{if(document.querySelector('.pkov,#ask:not([hidden]),.nfov'))return setTimeout(wait,400);teamDialog(gs,dest,ids)};setTimeout(wait,300)}
+function teamDialog(gs,parent,newIds){
+  let dest={cat:parent.cat,sub:parent.sub||''};
   const sel=new Set(gs.map((g,i)=>i));
   const o=document.createElement('div');o.className='pkov as';const c=document.createElement('div');c.className='ash';c.setAttribute('role','dialog');c.setAttribute('aria-label','תיקיות לפי צוות');
   const g=document.createElement('div');g.className='asg';
@@ -1839,7 +1846,7 @@ function teamDialog(gs,parent){
   const upd=()=>{const n=[...sel].reduce((a,i)=>a+gs[i].items.length,0);ok.textContent=sel.size?(sel.size===1?'פתיחת תיקייה והעברת '+n+' מוזיקות':'פתיחת '+sel.size+' תיקיות והעברת '+n+' מוזיקות'):'בחר צוות';ok.disabled=!sel.size;ok.dataset.ic=ok.textContent};
   gs.forEach((gr,i)=>{const b=document.createElement('button');b.className='aso xpr on';b.setAttribute('aria-pressed','true');b.style.setProperty('--fh',hueOf(gr.name));
     b.innerHTML='<span class="xck">'+ICN.check+'</span><span class="fic">'+ICN.folder+'</span>';const t=document.createElement('span');t.className='aot';t.textContent=gr.name;
-    const sm=document.createElement('small');sm.textContent=gr.items.length+' מוזיקות: '+gr.items.map(it=>it.name).join(' · ');t.appendChild(sm);b.appendChild(t);b.dataset.ic=b.textContent;
+    const sm=document.createElement('small');const old=gr.items.filter(it=>newIds&&!newIds.has(it.id)).length;sm.textContent=gr.items.length+' מוזיקות'+(old?' ('+(old===1?'אחת כבר בספרייה':old+' כבר בספרייה')+')':'')+': '+gr.items.map(it=>it.name).join(' · ');t.appendChild(sm);b.appendChild(t);b.dataset.ic=b.textContent;
     b.onclick=()=>{sel.has(i)?sel.delete(i):sel.add(i);b.classList.toggle('on');b.setAttribute('aria-pressed',sel.has(i));upd()};L.appendChild(b)});
   const fin=()=>{if(o.dataset.done)return;o.dataset.done=1;o.classList.add('out');setTimeout(()=>o.remove(),180)};
   dw.onclick=async()=>{o.style.visibility='hidden';const r=await folderPicker('איפה לפתוח את התיקיות?',dest);o.style.visibility='';if(r){dest=r;drawDest()}};
