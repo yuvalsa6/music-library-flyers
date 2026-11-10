@@ -2442,16 +2442,18 @@ let VOL=1;try{const v=parseFloat(localStorage.getItem('vol'));if(v>=0&&v<=1)VOL=
 let ACX=null,GN=null,gainOn=false;
 function unlockAcx(){try{if(!ACX){const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ACX=new C()}if(ACX.state!=='running')ACX.resume().catch(()=>{})}catch(e){}}
 ['touchend','click'].forEach(ev=>document.addEventListener(ev,unlockAcx,{passive:true}));
-let volBlocked=false;
+let volBlocked=false;const IOSV=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 /* iPhone: connecting the audio route while a song plays can leave the sound bypassing it (volume stays the same).
    So pause for a moment, connect, and resume */
 let volErr='';
 function volGraph(v){const wasPl=!NPD.get.call(au);try{if(wasPl)rawPause();const src=ACX.createMediaElementSource(au);GN=ACX.createGain();src.connect(GN);GN.connect(ACX.destination);GN.gain.value=v;gainOn=true;volErr='';if(wasPl)setTimeout(()=>rawPlay().catch(()=>{}),60);return true}catch(e){volErr=String((e&&e.message)||e).slice(0,60);if(wasPl)rawPlay().catch(()=>{});return false}}
-const volMode=()=>gainOn?'gain':volBlocked?'blocked':(Math.abs(NVD.get.call(au)-VOL)<0.01?'native':'none');
+const volMode=()=>gainOn?'gain':volBlocked?'blocked':IOSV?(VOL>=0.999?'ios-100':'ios-none'):(Math.abs(NVD.get.call(au)-VOL)<0.01?'native':'none');
 function applyVol(v,remoteCmd){v=Math.max(0,Math.min(1,v));VOL=v;try{localStorage.setItem('vol',String(v))}catch(e){}
   try{au.volume=v}catch(e){}
   if(gainOn&&GN){GN.gain.value=v;volBlocked=false;volBanner(false);return}
-  if(Math.abs(au.volume-v)<0.01){volBlocked=false;volBanner(false);return}
+  /* iPhone/iPad: the element may report the new volume but the sound doesn't change, so never trust it there */
+  if(IOSV&&v>=0.999){volBlocked=false;volBanner(false);return}
+  if(!IOSV&&Math.abs(au.volume-v)<0.01){volBlocked=false;volBanner(false);return}
   /* iPhone: au.volume is ignored. Route through Web Audio, which needs an unlocked (running) audio context */
   if(!ACX){try{const C=window.AudioContext||window.webkitAudioContext;if(C)ACX=new C()}catch(e){}}
   if(!ACX)return;
@@ -2714,7 +2716,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=169;
+const APP_VER=170;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
