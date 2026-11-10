@@ -838,6 +838,12 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
 .sheet .gtg.off .tgl{background:color-mix(in srgb,var(--ink) 18%,transparent)}
 .sheet .gtg.off .tgl i{inset-inline-start:2px}
 .sheet #updbtn:disabled{opacity:.5}
+/* עוצמה בנגן */
+.lvol{display:flex;align-items:center;gap:8px;flex:1 1 100%;min-width:0;direction:rtl}
+.lvol>span{font-size:14px;color:var(--muted);flex:none}
+.lvol input{flex:1;min-width:0;accent-color:var(--accent);height:30px;margin:0;direction:ltr}
+.lvol b{flex:none;min-width:40px;font-size:13px;font-weight:600;color:var(--muted);text-align:center;font-variant-numeric:tabular-nums}
+.lvfix{flex:1 1 100%}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -886,6 +892,7 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
       <button class="sm" id="lsv">＋ שמור קטע</button>
     </div>
     <div class="ctrl">
+      <span class="lvol" id="lvolw"><span>עוצמה</span><input type="range" id="lvol" min="0" max="100" step="1" value="100" aria-label="עוצמה בנגן הזה"><b id="lvolt">100%</b></span><button class="sm lvfix" id="lvfix" hidden>תגובה מיידית</button>
       <label>מהירות <select id="spd"><option value="0.5">0.5x</option><option value="0.75">0.75x</option><option value="0.9">0.9x</option><option value="1" selected>1x</option><option value="1.1">1.1x</option></select></label>
       <label>ספירה <select id="cd"><option value="0">ללא</option><option value="1">3-2-1</option><option value="2">5-6-7-8</option></select></label>
       <button class="sm" id="fs">מצב גדול</button>
@@ -906,9 +913,9 @@ const au=$('au');
 /* מיקום/אורך/עצירה של הנגן. כששולטים במכשיר אחר, הערכים מגיעים מהמכשיר השני (RCX).
    לא סומכים על דריסת המאפיינים של אלמנט האודיו: באייפון היא לא תמיד נקראת */
 var RCX=null;const NVD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'volume'),NTD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'currentTime'),NDD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'duration'),NPD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'paused');
-function aT(){return RCX&&RCX.on()?RCX.pos():NTD.get.call(au)}
+function aT(){if(RCX&&RCX.on())return RCX.pos();if(window.rsBusyNow)return window.rsBusyNow.t+(window.rsBusyNow.pl&&window.rsBusyNow.playingSince?(Date.now()-window.rsBusyNow.playingSince)/1000:0);return NTD.get.call(au)}
 function aD(){return RCX&&RCX.on()?RCX.dur():NDD.get.call(au)}
-function aP(){return RCX&&RCX.on()?RCX.paused():NPD.get.call(au)}
+function aP(){if(RCX&&RCX.on())return RCX.paused();if(window.rsBusyNow)return !window.rsBusyNow.pl;return NPD.get.call(au)}
 function aSeek(t){if(RCX&&RCX.on())return RCX.seek(t);try{if(typeof routeSeek==='function'&&routeSeek(t))return;if(typeof duckSeek==='function')duckSeek()}catch(e){}try{NTD.set.call(au,t)}catch(e){}};au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true;
 const PL='תור תרגילים',INBOX='יבוא שירים';
 let db=null,items=[],cats=['נוער','לאומית'],plist=[],filter='קטגוריות',curCat='',curSub='',openK=new Set(),subF='',curId=null,teams=[],runs=[],gapDef=10,view='music',tDay='',gapT=null,D=null,A=null,folders=[],deep=false,stDirty=false,cl=false,addKey=null;
@@ -1615,6 +1622,13 @@ async function checkUpdate(out){out('בודק…');let latest=0;
   out('נמצאה גרסה '+(latest||'חדשה')+', מעדכן…');
   try{const r=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();if(r){await r.update();const w=r.waiting||r.installing;if(w)w.postMessage&&w.postMessage('skipWaiting')}}catch(e){}
   setTimeout(()=>location.reload(),900)}
+/* עוצמה בנגן הזה: משנים או מחזירים את העוצמה גם במכשיר עצמו (לא רק מרחוק).
+   באייפון עוצמה מתחת ל-100% עוברת דרך מערכת השמע של iOS ומאטה את התגובה; ב-100% אפשר להחזיר תגובה מיידית (טעינה מחדש) */
+function lvolShow(){const e=$('lvol');if(!e)return;const v=Math.round(VOL*100);if(document.activeElement!==e)e.value=String(v);$('lvolt').textContent=v+'%';
+  const fx=$('lvfix');if(fx)fx.hidden=!(typeof IOSV!=='undefined'&&IOSV&&gainOn&&VOL>=0.999)}
+{const e=$('lvol');if(e){e.addEventListener('input',()=>{const v=(+e.value)/100;$('lvolt').textContent=Math.round(v*100)+'%';applyVol(v);if(isHost)rcPub(true);lvolShow()})}}
+{const fx=$('lvfix');if(fx)fx.onclick=()=>{if(!aP()){showOk('עצור את המוזיקה ולחץ שוב, כדי לא לקטוע אותה');return}location.reload()}}
+setInterval(lvolShow,1000);setTimeout(lvolShow,500);
 function artIc(isCur){return isCur&&!aP()?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
@@ -2455,15 +2469,15 @@ let rsBusy=false,rsT=0,rsTimer=0;
 function routeSeek(t){if(!(typeof gainOn!=='undefined'&&gainOn&&GN&&ACX&&typeof IOSV!=='undefined'&&IOSV))return false;
   if(NPD.get.call(au)&&!rsBusy){/* paused: reload too (so nothing old is queued when it resumes), no playing */
     const src0=au.getAttribute('src')||au.src;try{au.src=src0;au.addEventListener('loadedmetadata',()=>{try{cts.set.call(au,t)}catch(e){}},{once:true})}catch(e){try{cts.set.call(au,t)}catch(_){}}return true}
-  rsT=t;try{const n=ACX.currentTime;GN.gain.cancelScheduledValues(n);GN.gain.setValueAtTime(0,n)}catch(e){}
+  rsT=t;if(window.rsBusyNow){window.rsBusyNow.t=t;window.rsBusyNow.playingSince=0}try{const n=ACX.currentTime;GN.gain.cancelScheduledValues(n);GN.gain.setValueAtTime(0,n)}catch(e){}
   if(rsBusy){if(rsPhase==='settle')rsCycle();return true}
-  rsBusy=true;rsSrc=au.getAttribute('src')||au.src;rsRounds=0;rsCycle();return true}
+  rsBusy=true;window.rsBusyNow={t,pl:true,playingSince:0};rsSrc=au.getAttribute('src')||au.src;rsRounds=0;rsCycle();return true}
 let rsPhase='',rsSrc='',rsRounds=0,rsUpT=0;
-function rsUp(){clearTimeout(rsTimer);clearTimeout(rsUpT);rsBusy=false;rsPhase='';try{const n=ACX.currentTime;GN.gain.cancelScheduledValues(n);GN.gain.setTargetAtTime(VOL,n,0.03)}catch(e){GN.gain.value=VOL}}
+function rsUp(){clearTimeout(rsTimer);clearTimeout(rsUpT);rsBusy=false;rsPhase='';window.rsBusyNow=null;try{const n=ACX.currentTime;GN.gain.cancelScheduledValues(n);GN.gain.setTargetAtTime(VOL,n,0.03)}catch(e){GN.gain.value=VOL}}
 function rsCycle(){clearTimeout(rsTimer);clearTimeout(rsUpT);rsTimer=setTimeout(rsUp,4000);rsPhase='load';let applied=rsT;
   try{rawPause();au.src=rsSrc}catch(e){rsUp();return}
   au.addEventListener('loadedmetadata',()=>{applied=rsT;try{cts.set.call(au,applied)}catch(e){}rawPlay().catch(()=>rsUp())},{once:true});
-  au.addEventListener('playing',()=>{if(Math.abs(rsT-applied)>0.3&&++rsRounds<6){rsCycle();return}rsPhase='settle';rsUpT=setTimeout(rsUp,250)},{once:true})}
+  au.addEventListener('playing',()=>{if(Math.abs(rsT-applied)>0.3&&++rsRounds<6){rsCycle();return}rsPhase='settle';if(window.rsBusyNow){window.rsBusyNow.t=applied;window.rsBusyNow.playingSince=Date.now()}rsUpT=setTimeout(rsUp,250)},{once:true})}
 let duckT=0;function duckSeek(){if(!(typeof gainOn!=='undefined'&&gainOn&&GN&&ACX))return;try{const now=ACX.currentTime;GN.gain.cancelScheduledValues(now);GN.gain.setValueAtTime(0,now)}catch(e){return}
   clearTimeout(duckT);const up=()=>{clearTimeout(duckT);try{const n2=ACX.currentTime;GN.gain.cancelScheduledValues(n2);GN.gain.setTargetAtTime(VOL,n2,0.02)}catch(e){GN.gain.value=VOL}};
   au.addEventListener('seeked',()=>setTimeout(up,60),{once:true});duckT=setTimeout(up,900)}
@@ -2530,7 +2544,7 @@ function applyVol(v,remoteCmd){v=Math.max(0,Math.min(1,v));VOL=v;try{localStorag
 function volBanner(on){let b=$('volbn');if(!on){if(b)b.remove();return}if(b)return;b=document.createElement('button');b.id='volbn';
   b.textContent='כדי לשנות כאן עוצמה מהמכשיר השני, לחץ פעם אחת';b.onclick=()=>{unlockAcx();setTimeout(()=>applyVol(VOL),60);b.remove()};document.body.appendChild(b)}
 if(VOL<1)setTimeout(()=>applyVol(VOL),0);
-function rcPub(force){if(!(D||rmOk())||!isHost)return;const now=Date.now();
+function rcPub(force){if(!(D||rmOk())||!isHost)return;if(window.rsBusyNow&&!force)return;const now=Date.now();
   if(!force&&now-pubLast<350){clearTimeout(pubTm);pubTm=setTimeout(()=>rcPub(true),350);return}
   pubLast=now;hbn++;
   const st={host:ME,src:ME,name:devName,title:(cur()&&cur().name)||'',id:curId||null,q:curQ||null,playing:!!(curId&&!aP()),pos:aT()||0,dur:isFinite(aD())?aD():0,rate:+$('spd').value||1,la:loopA==null?null:loopA,lb:loopB==null?null:loopB,lo:!!loopOn,vol:VOL,vb:!!volBlocked,vm:volMode(),acx:ACX?ACX.state:'-',ve:volErr,hb:hbn,t:Date.now()};
@@ -2632,7 +2646,7 @@ function rcHandle(c){const t=c.type,a=c.arg;
   else if(t==='rate'){$('spd').value=String(a);au.defaultPlaybackRate=au.playbackRate=+a}
   else if(t==='loop'&&a){loopA=a.a;loopB=a.b;loopOn=!!a.on;ui()}
   else if(t==='item'&&a){const it=items.find(i=>i.id===a.id);if(it)doPlay(it,a.q||null)}
-  else if(t==='vol'){if(typeof a==='number')applyVol(a,true)}
+  else if(t==='vol'){if(typeof a==='number'){applyVol(a,true);try{lvolShow()}catch(e){}}}
   else if(t==='stop')$('pclose').onclick();
   rcPub(true)}
 /* עטיפות: במצב שלט כל פעולה נשלחת למכשיר המנגן */
@@ -2783,9 +2797,9 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=174;
+const APP_VER=175;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
