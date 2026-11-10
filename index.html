@@ -714,6 +714,28 @@ body.iview #tabbar{display:none}
 .nfok:disabled{opacity:.4;cursor:default}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .nfc{background:#1c1c1e}:root:not([data-theme="light"]) .nfin{background:#2c2c2e}}
 @media (prefers-reduced-motion:reduce){.nfc{animation:none}}
+/* בחירת מוזיקה קיימת */
+.xpk .asg{flex:1}
+.xsr{flex:none;margin:10px 12px 4px;min-height:42px;padding:0 14px;border:0;border-radius:12px;background:var(--soft);color:var(--ink);font:inherit;font-size:16px;outline:none}
+.xsr:focus-visible{box-shadow:0 0 0 2px var(--accent)}
+.xpl{max-height:52vh}
+.xgh{padding:12px 18px 4px;font-size:13px;font-weight:700;color:var(--muted)}
+.xpr{gap:12px;min-height:60px;padding:6px 14px}
+.xpr .aart{flex:none;width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:#fff}
+.xpr .aart svg{width:18px!important;height:18px!important;color:#fff!important}
+.xck{flex:none;width:24px;height:24px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line);display:inline-flex;align-items:center;justify-content:center;color:transparent;transition:background .15s}
+.xck svg{width:15px!important;height:15px!important;stroke-width:3}
+.xpr.on .xck{background:var(--fill);box-shadow:none;color:#fff}
+.xpr.on{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.xpr .aot{font-size:16px}
+.xem{padding:28px 18px;text-align:center;color:var(--muted);font-size:14px}
+.xok{background:var(--fill)!important;color:#fff!important}
+.xok:disabled{opacity:.45}
+.xcf{display:flex;flex-direction:column;gap:4px;text-align:start}
+.xcf b{font-size:16.5px}.xcf>small{color:var(--muted);font-size:13.5px}
+.xcf ul{margin:8px 0 0;padding:0;list-style:none;max-height:30vh;overflow:auto}
+.xcf li{display:flex;flex-direction:column;padding:6px 0;border-top:.5px solid var(--hair);font-size:15px}
+.xcf li small{color:var(--muted);font-size:12.5px}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -1218,7 +1240,7 @@ const ICN=(()=>{const sv=d=>'<svg viewBox="0 0 24 24" aria-hidden="true" fill="n
 /* צבע קבוע לכל שם, מתוך פלטה של גוונים נקיים (בלי חום/צהוב עכור) */
 const HUES=[211,232,262,288,330,352,14,168,190,145];
 function hueOf(n){let h=0;for(const c of String(n))h=(h*31+c.charCodeAt(0))%9973;return HUES[h%HUES.length]}
-function fSub(cat,p){const n=count(cat,p),k=kids(cat,p).length,a=[];if(k)a.push(k===1?'תיקייה אחת':k+' תיקיות');a.push(n===0?'אין שירים':n===1?'שיר אחד':n+' שירים');return a.join(' · ')}
+function fSub(cat,p){const n=count(cat,p),k=kids(cat,p).length,a=[];if(k)a.push(k===1?'תיקייה אחת':k+' תיקיות');a.push(n===0?'אין מוזיקות':n===1?'מוזיקה אחת':n+' מוזיקות');return a.join(' · ')}
 function folderHead(cat,p){const h=document.createElement('div');h.className='ahi';const nm=p?p.split(' / ').pop():cat;
   h.innerHTML='<span class="fic">'+(p?ICN.folder:ICN.lib)+'</span><span class="ahx"><b></b><small></small></span>';h.style.setProperty('--fh',hueOf(nm));
   h.querySelector('b').textContent=nm;h.querySelector('small').textContent=fSub(cat,p);return h}
@@ -1291,12 +1313,54 @@ function newFolderDialog(cat,p){if(document.querySelector('.nfov'))return;
   inp.oninput=upd;inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();go()}if(e.key==='Escape')close()};
   ok.onclick=go;ok.onpointerdown=e=>{if(!ok.disabled){e.preventDefault();go()}};c.querySelector('.nfx').onclick=close;
   o.onclick=e=>{if(e.target===o)close()};document.body.appendChild(o);setTimeout(()=>inp.focus(),60)}
+/* הוספת מוזיקות: חדשה מהקבצים, או קיימת (מהיבוא, או מתיקייה אחרת אחרי אישור) */
+let forceDest=null;
+function addMusic(cat,p){const where=p?p.split(' / ').pop():cat;
+  const nIn=items.filter(i=>i.cat===INBOX).length;
+  const opts=[{t:'מוזיקה חדשה',sub:'מהקבצים במכשיר',ic:'music',run:()=>{curCat=cat;curSub=p;forceDest={cat,sub:p};$('file').click()}},
+    {t:'מוזיקה קיימת',sub:nIn?'מהיבוא ('+nIn+' ממתינות) או מתיקייה אחרת':'מתיקייה אחרת',ic:'fmove',f:()=>existingPicker(cat,p)},{t:'ביטול',ghost:true}];
+  pick('הוספת מוזיקות ל"'+where+'"',opts,folderHead(cat,p)).then(i=>{const x=opts[i];if(x&&x.f)x.f()})}
+function existingPicker(cat,p){const where=p?p.split(' / ').pop():cat;
+  const pool=items.filter(i=>!(i.cat===cat&&(i.sub||'')===p)&&!(typeof isDead==='function'&&isDead(i)));
+  pool.sort((a,b)=>(a.cat===INBOX?0:1)-(b.cat===INBOX?0:1)||locStr(a.cat,a.sub).localeCompare(locStr(b.cat,b.sub),'he')||a.name.localeCompare(b.name,'he'));
+  const sel=new Set();
+  const o=document.createElement('div');o.className='pkov as';const c=document.createElement('div');c.className='ash xpk';c.setAttribute('role','dialog');c.setAttribute('aria-label','הוספת מוזיקה קיימת');
+  const g=document.createElement('div');g.className='asg';
+  const t=document.createElement('div');t.className='ahd att';t.textContent='מוזיקה קיימת ל"'+where+'"';
+  const sr=document.createElement('input');sr.className='xsr';sr.type='search';sr.placeholder='חיפוש לפי שם';sr.setAttribute('aria-label','חיפוש מוזיקה');
+  const L=document.createElement('div');L.className='fpl xpl';g.append(t,sr,L);
+  const ok=document.createElement('button');ok.className='asc xok';const x=document.createElement('button');x.className='asc';x.textContent='ביטול';
+  const upd=()=>{ok.textContent=sel.size?'הוספה · '+sel.size:'בחר מוזיקות';ok.disabled=!sel.size;ok.dataset.ic=ok.textContent};
+  const fin=()=>{if(o.dataset.done)return;o.dataset.done=1;o.classList.add('out');setTimeout(()=>o.remove(),180)};
+  const draw=()=>{const q=sr.value.trim().toLowerCase();L.innerHTML='';let lastG=null;
+    const list=pool.filter(i=>!q||i.name.toLowerCase().includes(q));
+    if(!list.length){const e=document.createElement('div');e.className='xem';e.textContent=pool.length?'לא נמצאה מוזיקה בשם הזה':'אין מוזיקות אחרות להוסיף';L.appendChild(e);return}
+    list.forEach(it=>{const gk=it.cat===INBOX?'מהיבוא':'מתיקיות אחרות';if(gk!==lastG){lastG=gk;const h=document.createElement('div');h.className='xgh';h.textContent=gk;L.appendChild(h)}
+      const b=document.createElement('button');b.className='aso xpr'+(sel.has(it.id)?' on':'');b.setAttribute('aria-pressed',sel.has(it.id));
+      b.innerHTML='<span class="xck">'+ICN.check+'</span><span class="aart">'+ICX.note+'</span>';b.children[1].style.background=artBg(it.name);
+      const tx=document.createElement('span');tx.className='aot';tx.textContent=it.name;const sm=document.createElement('small');sm.textContent=it.cat===INBOX?'ממתינה למיון':locStr(it.cat,it.sub);tx.appendChild(sm);b.appendChild(tx);b.dataset.ic=b.textContent;
+      b.onclick=()=>{sel.has(it.id)?sel.delete(it.id):sel.add(it.id);b.classList.toggle('on');b.setAttribute('aria-pressed',sel.has(it.id));upd()};L.appendChild(b)})};
+  sr.oninput=draw;draw();upd();
+  x.onclick=fin;o.onclick=e=>{if(e.target===o)fin()};
+  ok.onclick=async()=>{const ch=pool.filter(i=>sel.has(i.id)),fromF=ch.filter(i=>i.cat!==INBOX),fromIn=ch.filter(i=>i.cat===INBOX);let go=ch;
+    if(fromF.length){const h=document.createElement('div');h.className='xcf';
+      const tt=document.createElement('b');tt.textContent=fromF.length===1?'להעביר את המוזיקה הזו ל"'+where+'"?':'להעביר '+fromF.length+' מוזיקות ל"'+where+'"?';h.appendChild(tt);
+      const sb=document.createElement('small');sb.textContent=fromF.length===1?'היא תצא מהתיקייה שבה היא נמצאת עכשיו:':'הן יצאו מהתיקיות שבהן הן נמצאות עכשיו:';h.appendChild(sb);
+      const ul=document.createElement('ul');fromF.slice(0,6).forEach(i=>{const li=document.createElement('li');const n=document.createElement('span');n.textContent=i.name;const l=document.createElement('small');l.textContent=locStr(i.cat,i.sub);li.append(n,l);ul.appendChild(li)});
+      if(fromF.length>6){const li=document.createElement('li');li.textContent='ועוד '+(fromF.length-6)+'…';ul.appendChild(li)}h.appendChild(ul);
+      const op=[{t:fromF.length===1?'כן, להעביר':'כן, להעביר הכול',ic:'fmove'}];if(fromIn.length)op.push({t:'רק את '+fromIn.length+' מהיבוא',ic:'check'});op.push({t:'ביטול',ghost:true});
+      fin();const r=await pick('אישור העברה',op,h);if(op[r]&&op[r].ghost||r<0)return;go=r===1&&fromIn.length?fromIn:ch}
+    else fin();
+    if(!go.length)return;go.forEach(i=>{i.cat=cat;i.sub=p;put(i)});
+    curCat=cat;curSub=p;if(p){const sg=p.split(' / ');for(let k=1;k<=sg.length;k++)openK.add(cat+'||'+sg.slice(0,k).join(' / '))}render();
+    showOk('✓ '+(go.length===1?'מוזיקה אחת נוספה':go.length+' מוזיקות נוספו')+' ל"'+where+'"')};
+  c.append(g,ok,x);o.appendChild(c);document.body.appendChild(o)}
 function artIc(isCur){return isCur&&!au.paused?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
   const here=()=>{curCat=cat;curSub=p};
   const swap=dir=>{const j=ix+dir;[sib[ix],sib[j]]=[sib[j],sib[ix]];forder[cat+'||'+parent]=sib;saveLS();render()};
-  const opts=[{t:'הוספת שירים לכאן',ic:'music',run:here,lab:'file'},
+  const opts=[{t:'הוספת מוזיקות לכאן',ic:'music',f:()=>addMusic(cat,p)},
     {t:'תיקייה חדשה בתוכה',ic:'fplus',f:()=>newFolderDialog(cat,p)},{t:'שינוי שם',ic:'pencil',f:()=>renameNode(cat,p)}];
   if(ix>0)opts.push({t:'הזזה למעלה',ic:'up',f:()=>swap(-1)});
   if(ix>=0&&ix<sib.length-1)opts.push({t:'הזזה למטה',ic:'down',f:()=>swap(1)});
@@ -1381,7 +1445,7 @@ function folderRow(L,cat,p,depth,label){
   kids(cat,p).forEach(k=>folderRow(box,cat,p?p+' / '+k:k,depth+1,k));
   items.filter(i=>i.cat===cat&&(i.sub||'')===p).forEach(it=>mkRow(it,box));
   const a=document.createElement('div');a.className='fadd';
-  const ad=document.createElement('label');ad.htmlFor='file';ad.innerHTML=ICN.music+'<span>שירים</span>';ad.onclick=()=>{curCat=cat;curSub=p};
+  const ad=document.createElement('button');ad.innerHTML=ICN.music+'<span>מוזיקות</span>';ad.onclick=()=>addMusic(cat,p);
   const ns=document.createElement('button');ns.innerHTML=ICN.fplus+'<span>תיקייה</span>';ns.onclick=()=>newFolderDialog(cat,p);
   [ad,ns].forEach(x=>x.dataset.ic=x.textContent);a.append(ad,ns);box.appendChild(a)}
 const TBI={folder:'<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 6.5A2.5 2.5 0 0 1 5.5 4h3.6c.6 0 1.2.3 1.6.8L12 6.4h6.5A2.5 2.5 0 0 1 21 8.9v8.6a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5zM12 10a1 1 0 0 0-1 1v2H9a1 1 0 1 0 0 2h2v2a1 1 0 1 0 2 0v-2h2a1 1 0 1 0 0-2h-2v-2a1 1 0 0 0-1-1z"/></svg>',
@@ -1398,11 +1462,11 @@ function addRow(cat,p,ind){
 function catView(L,cat){
   const a=document.createElement('div');a.className='acts tb';
   const ns=document.createElement('button');ns.className='sm';ns.innerHTML=TBI.folder+'<span>תיקייה חדשה</span>';ns.onclick=()=>newFolderDialog(cat,'');
-  const ad=document.createElement('label');ad.className='sm';ad.htmlFor='file';ad.innerHTML=TBI.add+'<span>הוספת שירים</span>';ad.onclick=()=>{curCat=cat;curSub=''};
+  const ad=document.createElement('button');ad.className='sm';ad.innerHTML=TBI.add+'<span>הוספת מוזיקות</span>';ad.dataset.ic=ad.textContent;ad.onclick=()=>addMusic(cat,'');
   a.append(ns,ad);L.appendChild(a);if(addKey===cat+'||')L.appendChild(addRow(cat,'','0px'));
   const ks=kids(cat,''),rs=items.filter(i=>i.cat===cat&&!i.sub);
   ks.forEach(k=>folderRow(L,cat,k,0,k));rs.forEach(it=>mkRow(it,L));
-  if(!ks.length&&!rs.length){const e=document.createElement('div');e.className='empty';e.innerHTML='<div class="ei">'+ICX.note+'</div><b>הקטגוריה ריקה</b><span>אפשר להוסיף שירים או ליצור תיקייה עם הכפתורים למעלה</span>';L.appendChild(e)}}
+  if(!ks.length&&!rs.length){const e=document.createElement('div');e.className='empty';e.innerHTML='<div class="ei">'+ICX.note+'</div><b>הקטגוריה ריקה</b><span>אפשר להוסיף מוזיקות או ליצור תיקייה עם הכפתורים למעלה</span>';L.appendChild(e)}}
 function render(){
   if(Date.now()<animUntil){clearTimeout(rt);rt=setTimeout(render,animUntil-Date.now()+30);return}
   if(view==='inbox'){tabsR();$('chips').innerHTML='';$('subs').innerHTML='';const L=$('list');L.innerHTML='';inboxView(L);pad();return}
@@ -1639,7 +1703,8 @@ $('file').onchange=async e=>{
   const files=[...e.target.files].filter(f=>/^(audio|video)/.test(f.type)||/\.(mp3|m4a|wav|aac|ogg|opus|amr|flac|wma|mp4|3gp)$/i.test(f.name));e.target.value='';
   if(!files.length)return;
   const d0=curCat&&cats.includes(curCat)&&curCat!==INBOX?curCat:(vcats()[0]||cats[0]);
-  const dest=curSub?{cat:d0,sub:curSub}:await destPicker(files.length,d0,'');if(!dest)return;
+  const fd=forceDest;forceDest=null;
+  const dest=fd||(curSub?{cat:d0,sub:curSub}:await destPicker(files.length,d0,''));if(!dest)return;
   const cat=dest.cat,sub=dest.sub,newIts=[];
   files.forEach(f=>{
     const it={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:f.name.replace(/\.[^.]+$/,''),cat,sub,blob:typed(f),ext:(f.name.split('.').pop()||'').toLowerCase(),added:Date.now(),dur:0,marks:[],notes:''};
@@ -2325,7 +2390,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=154;
+const APP_VER=155;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
