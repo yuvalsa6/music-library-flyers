@@ -895,7 +895,7 @@ const $=id=>document.getElementById(id);
 const au=$('au');
 /* מיקום/אורך/עצירה של הנגן. כששולטים במכשיר אחר, הערכים מגיעים מהמכשיר השני (RCX).
    לא סומכים על דריסת המאפיינים של אלמנט האודיו: באייפון היא לא תמיד נקראת */
-var RCX=null;const NTD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'currentTime'),NDD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'duration'),NPD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'paused');
+var RCX=null;const NVD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'volume'),NTD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'currentTime'),NDD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'duration'),NPD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'paused');
 function aT(){return RCX&&RCX.on()?RCX.pos():NTD.get.call(au)}
 function aD(){return RCX&&RCX.on()?RCX.dur():NDD.get.call(au)}
 function aP(){return RCX&&RCX.on()?RCX.paused():NPD.get.call(au)}
@@ -2443,7 +2443,11 @@ let ACX=null,GN=null,gainOn=false;
 function unlockAcx(){try{if(!ACX){const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ACX=new C()}if(ACX.state!=='running')ACX.resume().catch(()=>{})}catch(e){}}
 ['touchend','click'].forEach(ev=>document.addEventListener(ev,unlockAcx,{passive:true}));
 let volBlocked=false;
-function volGraph(v){try{const src=ACX.createMediaElementSource(au);GN=ACX.createGain();src.connect(GN);GN.connect(ACX.destination);GN.gain.value=v;gainOn=true;return true}catch(e){return false}}
+/* iPhone: connecting the audio route while a song plays can leave the sound bypassing it (volume stays the same).
+   So pause for a moment, connect, and resume */
+let volErr='';
+function volGraph(v){const wasPl=!NPD.get.call(au);try{if(wasPl)rawPause();const src=ACX.createMediaElementSource(au);GN=ACX.createGain();src.connect(GN);GN.connect(ACX.destination);GN.gain.value=v;gainOn=true;volErr='';if(wasPl)setTimeout(()=>rawPlay().catch(()=>{}),60);return true}catch(e){volErr=String((e&&e.message)||e).slice(0,60);if(wasPl)rawPlay().catch(()=>{});return false}}
+const volMode=()=>gainOn?'gain':volBlocked?'blocked':(Math.abs(NVD.get.call(au)-VOL)<0.01?'native':'none');
 function applyVol(v,remoteCmd){v=Math.max(0,Math.min(1,v));VOL=v;try{localStorage.setItem('vol',String(v))}catch(e){}
   try{au.volume=v}catch(e){}
   if(gainOn&&GN){GN.gain.value=v;volBlocked=false;volBanner(false);return}
@@ -2460,7 +2464,7 @@ if(VOL<1)setTimeout(()=>applyVol(VOL),0);
 function rcPub(force){if(!(D||rmOk())||!isHost)return;const now=Date.now();
   if(!force&&now-pubLast<350){clearTimeout(pubTm);pubTm=setTimeout(()=>rcPub(true),350);return}
   pubLast=now;hbn++;
-  const st={host:ME,src:ME,name:devName,title:(cur()&&cur().name)||'',id:curId||null,q:curQ||null,playing:!!(curId&&!aP()),pos:aT()||0,dur:isFinite(aD())?aD():0,rate:+$('spd').value||1,la:loopA==null?null:loopA,lb:loopB==null?null:loopB,lo:!!loopOn,vol:VOL,vb:!!volBlocked,hb:hbn,t:Date.now()};
+  const st={host:ME,src:ME,name:devName,title:(cur()&&cur().name)||'',id:curId||null,q:curQ||null,playing:!!(curId&&!aP()),pos:aT()||0,dur:isFinite(aD())?aD():0,rate:+$('spd').value||1,la:loopA==null?null:loopA,lb:loopB==null?null:loopB,lo:!!loopOn,vol:VOL,vb:!!volBlocked,vm:volMode(),acx:ACX?ACX.state:'-',ve:volErr,hb:hbn,t:Date.now()};
   if(rmOk())try{RM.emit('state',st).catch(()=>{})}catch(e){}
   const al=aliveDevs(),allDirect=!!(RM&&RM.isOpen&&al.length&&al.every(([id])=>RM.isOpen(id)));
   if(D&&al.length&&now-(window._ctlW||0)>(allDirect?10000:1200)){window._ctlW=now;try{D.doc('ctl/'+ME).set(st).catch(()=>{})}catch(e){}}}
@@ -2496,7 +2500,7 @@ let rcDiag=null;
 function rcDiagText(){if(!remote||!rcDiag)return'';const ago=rcDiag.last?Math.round((Date.now()-rcDiag.last)/1000)+' שנ׳':'אף פעם';let d=NaN,t=NaN;try{d=aD();t=aT()}catch(e){}
   return 'אבחון · גרסה '+APP_VER+' · ישיר '+(RM&&RM.isOpen&&RM.isOpen(target)?'פתוח':'סגור')+' · עדכונים: ישיר '+rcDiag.direct+', ענן '+rcDiag.cloud+' · אחרון לפני '+ago+
     ' · מצב: '+(PS?((PS.playing?'מנגן':'עוצר')+' '+fmt(PS.pos||0)+'/'+fmt(PS.dur||0)+(PS.id?'':' בלי שיר')):'אין')+' · אצלי: '+(rPlaying?'מנגן':'עוצר')+' '+(isFinite(t)?fmt(t):'?')+'/'+(isFinite(d)?fmt(d):'?')+
-    ' · פס: '+($('devnow')&&$('devnow').hidden?'מוסתר':'מוצג')+(rcDiag.err?' · שגיאה: '+rcDiag.err:'')}
+    ' · פס: '+($('devnow')&&$('devnow').hidden?'מוסתר':'מוצג')+' · עוצמה: נשלחו '+(rcDiag.vol||0)+', שם '+(PS&&typeof PS.vol==='number'?Math.round(PS.vol*100)+'% '+(PS.vm||'?')+' '+(PS.acx||'')+(PS.ve?' '+PS.ve:''):'?')+(rcDiag.err?' · שגיאה: '+rcDiag.err:'')}
 function detach(){if(ctlUnsub){try{ctlUnsub()}catch(e){}ctlUnsub=null}target=null;goStandalone();devUI()}
 function goRemote(){remote=true;isHost=false;au.muted=true;stopGap();rPlaying=!!(PS&&PS.playing);vBase=(PS&&PS.pos)||0;vAt=Date.now();devUI();try{sync()}catch(e){}if(rPlaying&&!raf)raf=requestAnimationFrame(tick)}
 function goStandalone(){if(!remote)return;remote=false;au.muted=false;rawPause();devUI();try{sync()}catch(e){}}
@@ -2547,7 +2551,7 @@ function follow(d){
 /* שלט: סליידר עוצמה */
 let optVol=0,volTm=0,volLast=0;
 const volShow=v=>{const e=$('devvol');if(!e)return;e.value=String(Math.round(v*100));$('devvolt').textContent=Math.round(v*100)+'%'};
-{const e=$('devvol');if(e){e.addEventListener('input',()=>{const v=(+e.value)/100;$('devvolt').textContent=Math.round(v*100)+'%';optVol=Date.now()+1200;const now=Date.now();clearTimeout(volTm);if(now-volLast>=100){volLast=now;rcSend('vol',v)}else volTm=setTimeout(()=>{volLast=Date.now();rcSend('vol',v)},100)});
+{const e=$('devvol');if(e){e.addEventListener('input',()=>{if(rcDiag)rcDiag.vol=(rcDiag.vol||0)+1;const v=(+e.value)/100;$('devvolt').textContent=Math.round(v*100)+'%';optVol=Date.now()+1200;const now=Date.now();clearTimeout(volTm);if(now-volLast>=100){volLast=now;rcSend('vol',v)}else volTm=setTimeout(()=>{volLast=Date.now();rcSend('vol',v)},100)});
   e.addEventListener('change',()=>{clearTimeout(volTm);optVol=Date.now()+1200;rcSend('vol',(+e.value)/100)});
   ['pointerdown','touchstart'].forEach(ev=>e.addEventListener(ev,x=>x.stopPropagation(),{passive:true}))}}
 function rcHandle(c){const t=c.type,a=c.arg;
@@ -2710,7 +2714,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=168;
+const APP_VER=169;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
