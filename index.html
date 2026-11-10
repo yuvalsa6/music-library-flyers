@@ -822,6 +822,12 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
 #selbar .sba button:disabled{opacity:.4;cursor:default}
 @media (prefers-reduced-motion:reduce){#selbar{animation:none}}
 .rcdiag{display:block;margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--soft);font-size:11.5px!important;line-height:1.5;color:var(--muted);text-align:start;direction:rtl;unicode-bidi:plaintext}
+/* מי הוסיף */
+.ahx .aby{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+/* עוצמה מרחוק באייפון */
+#volbn{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 10px);z-index:131;max-width:calc(100vw - 24px);padding:12px 16px;border:0;border-radius:16px;background:var(--fill);color:#fff;font:inherit;font-size:15px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.25);cursor:pointer}
+.devvol.blk::after{content:'במכשיר המנגן צריך ללחוץ פעם אחת על ההודעה שעל המסך כדי לשלוט בעוצמה';flex:0 0 100%;order:9;font-size:12.5px;color:var(--muted);direction:rtl;text-align:start}
+.devvol.blk{flex-wrap:wrap}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -1404,7 +1410,8 @@ function folderHead(cat,p){const h=document.createElement('div');h.className='ah
   h.innerHTML='<span class="fic">'+(p?ICN.folder:ICN.lib)+'</span><span class="ahx"><b></b><small></small></span>';h.style.setProperty('--fh',hueOf(nm));
   h.querySelector('b').textContent=nm;h.querySelector('small').textContent=fSub(cat,p);return h}
 function songHead(it){const h=document.createElement('div');h.className='ahi';h.innerHTML='<span class="aart">'+ICX.note+'</span><span class="ahx"><b></b><small></small></span>';
-  h.firstChild.style.background=artBg(it.name);h.querySelector('b').textContent=it.name;h.querySelector('small').textContent=[locStr(it.cat,it.sub),it.dur?fmt(it.dur):''].filter(Boolean).join(' · ');return h}
+  h.firstChild.style.background=artBg(it.name);h.querySelector('b').textContent=it.name;h.querySelector('small').textContent=[locStr(it.cat,it.sub),it.dur?fmt(it.dur):''].filter(Boolean).join(' · ');
+  const ad=addedTxt(it);if(ad){const a=document.createElement('small');a.className='aby';a.textContent=ad;h.querySelector('.ahx').appendChild(a)}return h}
 /* בוחר מיקום: עץ של קטגוריות ותיקיות */
 function folderPicker(title,cur){return new Promise(res=>{const o=document.createElement('div');o.className='pkov as';
   const c=document.createElement('div');c.className='ash';c.setAttribute('role','dialog');c.setAttribute('aria-label',title);
@@ -1451,7 +1458,7 @@ function inboxView(L){
   L.appendChild(hd);
   list.forEach(it=>{mkRow(it,L);const d=L.lastElementChild,q=d.querySelector('.qadd');
     if(q){q.innerHTML=ICN.fmove;q.dataset.ic=q.textContent;q.setAttribute('aria-label','מיון לתיקייה');q.classList.add('isort');q.onclick=e=>{e.stopPropagation();sortOne(it)}}
-    const bf=bestFolder(it),m=d.querySelector('.meta');
+    const bf=bestFolder(it),m=d.querySelector('.meta');if(m&&it.by){const sb=m.querySelector('.sub');if(sb)sb.textContent=[sb.textContent,'מ'+it.by].filter(Boolean).join(' · ')}
     if(bf&&m){const s=document.createElement('button');s.className='sugg';s.innerHTML=ICN.folder;const sp=document.createElement('span');sp.textContent='העבר ל"'+(bf.sub?bf.sub.split(' / ').pop():bf.cat)+'"';s.appendChild(sp);s.dataset.ic=s.textContent;
       s.onclick=e=>{e.stopPropagation();sortTo(it,bf.cat,bf.sub)};m.appendChild(s)}})}
 /* חלון קופץ: תיקייה חדשה. הצבע של התיקייה מתעדכן לפי השם שמקלידים */
@@ -1572,6 +1579,9 @@ async function selAct(a){const list=items.filter(i=>selIds.has(i.id));if(!list.l
     if(n>6){const li=document.createElement('li');li.textContent='ועוד '+(n-6)+'…';ul.appendChild(li)}h.appendChild(ul);
     const k=await pick('מחיקה',[{t:'מחיקת '+w,ic:'trash',danger:true},{t:'ביטול',ghost:true}],h);if(k!==0)return;
     list.forEach(it=>{try{delItem(it)}catch(e){}});selEnd();showOk(w+' נמחקו')}}
+/* מי הוסיף: שם המכשיר שהעלה (מוגדר בתפריט השליטה מרחוק) */
+function addedBy(){try{return(typeof devName==='string'&&devName)||localStorage.getItem('devname')||''}catch(e){return''}}
+function addedTxt(it){const p=[];if(it.by)p.push('נוסף ע״י '+it.by);if(it.added){try{p.push(new Date(it.added).toLocaleDateString('he-IL',{day:'numeric',month:'numeric',year:'2-digit'}))}catch(e){}}return p.join(' · ')}
 function artIc(isCur){return isCur&&!aP()?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
@@ -1926,7 +1936,7 @@ $('file').onchange=async e=>{
   const dest=fd||(curSub?{cat:d0,sub:curSub}:await destPicker(files.length,d0,''));if(!dest)return;
   const cat=dest.cat,sub=dest.sub,newIts=[];
   files.forEach(f=>{
-    const it={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:f.name.replace(/\.[^.]+$/,''),cat,sub,blob:typed(f),ext:(f.name.split('.').pop()||'').toLowerCase(),added:Date.now(),dur:0,marks:[],notes:''};
+    const it={by:addedBy(),id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:f.name.replace(/\.[^.]+$/,''),cat,sub,blob:typed(f),ext:(f.name.split('.').pop()||'').toLowerCase(),added:Date.now(),dur:0,marks:[],notes:''};
     items.push(it);putBlob(it);put(it);toCloud(it);newIts.push(it)});
   filter=cat;curCat=cat;curSub=sub;
   openK.clear();if(sub){const sg=sub.split(' / ');for(let i=1;i<=sg.length;i++)openK.add(cat+'||'+sg.slice(0,i).join(' / '))}
@@ -1985,7 +1995,7 @@ $('zipf').onchange=async e=>{
       if(items.some(i=>i.src===base||(i.cat===cat&&(i.name===nm||i.name===nm0)))){skipped++;continue}
       if(wn.has(base)){named++;let c=2;const b0=nm;while(items.some(i=>i.cat===cat&&i.name===nm))nm=b0+' ('+(c++)+')'}
       try{const blob=await zipRead(f,en),ext=(base.split('.').pop()||'').toLowerCase();
-        const it={id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:nm,cat,sub,blob:typed(new File([blob],base,{type:MT[ext]||'audio/mpeg'})),ext,added:Date.now(),dur:0,marks:[],notes:'',src:base};
+        const it={by:addedBy(),id:Date.now().toString(36)+Math.random().toString(36).slice(2,6),name:nm,cat,sub,blob:typed(new File([blob],base,{type:MT[ext]||'audio/mpeg'})),ext,added:Date.now(),dur:0,marks:[],notes:'',src:base};
         const bf=bestFolder(it);if(bf){it.cat=bf.cat;it.sub=bf.sub||'';auto++}
         items.push(it);putBlob(it);put(it);toCloud(it);added++;zipNew.push(it)}catch(err){bad++}
       if(k%3===0)render();await new Promise(r=>setTimeout(r,0))}
@@ -2432,15 +2442,25 @@ let VOL=1;try{const v=parseFloat(localStorage.getItem('vol'));if(v>=0&&v<=1)VOL=
 let ACX=null,GN=null,gainOn=false;
 function unlockAcx(){try{if(!ACX){const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ACX=new C()}if(ACX.state!=='running')ACX.resume().catch(()=>{})}catch(e){}}
 ['touchend','click'].forEach(ev=>document.addEventListener(ev,unlockAcx,{passive:true}));
-function applyVol(v){v=Math.max(0,Math.min(1,v));VOL=v;try{localStorage.setItem('vol',String(v))}catch(e){}
+let volBlocked=false;
+function volGraph(v){try{const src=ACX.createMediaElementSource(au);GN=ACX.createGain();src.connect(GN);GN.connect(ACX.destination);GN.gain.value=v;gainOn=true;return true}catch(e){return false}}
+function applyVol(v,remoteCmd){v=Math.max(0,Math.min(1,v));VOL=v;try{localStorage.setItem('vol',String(v))}catch(e){}
   try{au.volume=v}catch(e){}
-  if(gainOn&&GN){GN.gain.value=v;return}
-  if(v<1&&au.volume!==v&&ACX&&ACX.state==='running'){try{const src=ACX.createMediaElementSource(au);GN=ACX.createGain();src.connect(GN);GN.connect(ACX.destination);GN.gain.value=v;gainOn=true}catch(e){}}}
+  if(gainOn&&GN){GN.gain.value=v;volBlocked=false;volBanner(false);return}
+  if(Math.abs(au.volume-v)<0.01){volBlocked=false;volBanner(false);return}
+  /* iPhone: au.volume is ignored. Route through Web Audio, which needs an unlocked (running) audio context */
+  if(!ACX){try{const C=window.AudioContext||window.webkitAudioContext;if(C)ACX=new C()}catch(e){}}
+  if(!ACX)return;
+  if(ACX.state==='running'){if(volGraph(v)){volBlocked=false;volBanner(false)}return}
+  ACX.resume().then(()=>{if(ACX.state==='running'&&!gainOn&&volGraph(VOL)){volBlocked=false;volBanner(false);if(isHost)rcPub(true)}else throw 0}).catch(()=>{volBlocked=true;if(remoteCmd)volBanner(true);if(isHost)rcPub(true)})}
+/* באייפון אי אפשר לשנות עוצמה בלי לחיצה אחת על המסך של המכשיר המנגן */
+function volBanner(on){let b=$('volbn');if(!on){if(b)b.remove();return}if(b)return;b=document.createElement('button');b.id='volbn';
+  b.textContent='כדי לשנות כאן עוצמה מהמכשיר השני, לחץ פעם אחת';b.onclick=()=>{unlockAcx();setTimeout(()=>applyVol(VOL),60);b.remove()};document.body.appendChild(b)}
 if(VOL<1)setTimeout(()=>applyVol(VOL),0);
 function rcPub(force){if(!(D||rmOk())||!isHost)return;const now=Date.now();
   if(!force&&now-pubLast<350){clearTimeout(pubTm);pubTm=setTimeout(()=>rcPub(true),350);return}
   pubLast=now;hbn++;
-  const st={host:ME,src:ME,name:devName,title:(cur()&&cur().name)||'',id:curId||null,q:curQ||null,playing:!!(curId&&!aP()),pos:aT()||0,dur:isFinite(aD())?aD():0,rate:+$('spd').value||1,la:loopA==null?null:loopA,lb:loopB==null?null:loopB,lo:!!loopOn,vol:VOL,hb:hbn,t:Date.now()};
+  const st={host:ME,src:ME,name:devName,title:(cur()&&cur().name)||'',id:curId||null,q:curQ||null,playing:!!(curId&&!aP()),pos:aT()||0,dur:isFinite(aD())?aD():0,rate:+$('spd').value||1,la:loopA==null?null:loopA,lb:loopB==null?null:loopB,lo:!!loopOn,vol:VOL,vb:!!volBlocked,hb:hbn,t:Date.now()};
   if(rmOk())try{RM.emit('state',st).catch(()=>{})}catch(e){}
   const al=aliveDevs(),allDirect=!!(RM&&RM.isOpen&&al.length&&al.every(([id])=>RM.isOpen(id)));
   if(D&&al.length&&now-(window._ctlW||0)>(allDirect?10000:1200)){window._ctlW=now;try{D.doc('ctl/'+ME).set(st).catch(()=>{})}catch(e){}}}
@@ -2480,9 +2500,22 @@ function rcDiagText(){if(!remote||!rcDiag)return'';const ago=rcDiag.last?Math.ro
 function detach(){if(ctlUnsub){try{ctlUnsub()}catch(e){}ctlUnsub=null}target=null;goStandalone();devUI()}
 function goRemote(){remote=true;isHost=false;au.muted=true;stopGap();rPlaying=!!(PS&&PS.playing);vBase=(PS&&PS.pos)||0;vAt=Date.now();devUI();try{sync()}catch(e){}if(rPlaying&&!raf)raf=requestAnimationFrame(tick)}
 function goStandalone(){if(!remote)return;remote=false;au.muted=false;rawPause();devUI();try{sync()}catch(e){}}
-function takeOver(){if(!remote)return;const old=target,vp=vpos(),wasPl=!!(PS&&PS.playing);if(old&&wasPl)rcPost('pause',null,old);if(ctlUnsub){try{ctlUnsub()}catch(e){}ctlUnsub=null}target=null;remote=false;isHost=true;au.muted=false;rawSeek(vp);{const t0=Date.now(),pl0=!!(PS&&PS.playing),want=()=>vp+(pl0?(Date.now()-t0)/1000:0),fix=()=>{if(remote||!isHost)return;if(cts.get.call(au)<want()-2)rawSeek(want())};['loadedmetadata','canplay','playing'].forEach(ev=>au.addEventListener(ev,fix,{once:true}))}{const c0=cur();if(c0&&!c0.blob&&!c0.asset)c0.ac?fetchAudio(c0):showErr('אין קובץ שמע לתרגיל הזה במכשיר הזה')}hbn=((PS&&PS.hb)||0)+1;if(PS&&PS.playing&&aP())rawPlay().catch(()=>{});rcPub(true);devUI()}
+function takeOver(){if(!remote)return;const old=target,vp=vpos(),P0=PS?{...PS}:null,wasPl=!!(P0&&P0.playing);
+  if(old&&wasPl)rcPost('pause',null,old);if(ctlUnsub){try{ctlUnsub()}catch(e){}ctlUnsub=null}target=null;remote=false;isHost=true;au.muted=false;
+  /* the song that plays on the other device, from its last state (not whatever was loaded here before) */
+  const it=P0&&P0.id?items.find(i=>i.id===P0.id):null;
+  if(!it){rawPause();if(P0&&P0.id)showErr('המוזיקה שניגנה במכשיר השני לא נמצאת כאן');hbn=((P0&&P0.hb)||0)+1;rcPub(true);devUI();return}
+  if(curId!==it.id||!au.getAttribute('src')){curQ=P0.q||null;indQ=null;syncDone();loadItem(it)}else{curQ=P0.q||null}
+  if(P0.la!=null||P0.lb!=null){loopA=P0.la;loopB=P0.lb;loopOn=!!P0.lo;ui()}
+  {const r=P0.rate||1;if(+$('spd').value!==r){$('spd').value=String(r);au.defaultPlaybackRate=au.playbackRate=r}}
+  const t0=Date.now(),want=()=>vp+(wasPl?(Date.now()-t0)/1000:0),fix=()=>{if(remote||!isHost)return;if(Math.abs(cts.get.call(au)-want())>1.5)rawSeek(want())};
+  rawSeek(vp);['loadedmetadata','canplay','playing'].forEach(ev=>au.addEventListener(ev,fix,{once:true}));
+  if(!it.blob&&!it.asset){if(it.ac)fetchAudio(it,wasPl);else showErr('אין קובץ שמע לתרגיל הזה במכשיר הזה')}
+  hbn=((P0&&P0.hb)||0)+1;if(wasPl)rawPlay().catch(()=>{});render();rcPub(true);devUI();showOk('המוזיקה ממשיכה במכשיר הזה')}
+/* stop controlling: the other device keeps playing its music, this one is free (empty player) */
+function stopControl(){if(!remote)return;detach();try{rawPause();au.removeAttribute('src');au.load()}catch(e){}curId=null;curQ=null;doneQ.clear();indQ=null;try{emptyPlayer()}catch(e){}$('player').hidden=true;render();showOk('השליטה הופסקה. המכשיר השני ממשיך לנגן')}
 function follow(d){
-  if(d&&typeof d.vol==='number'&&Date.now()>=optVol)volShow(d.vol);
+  if(d&&typeof d.vol==='number'&&Date.now()>=optVol)volShow(d.vol);{const w=$('devvolw');if(w)w.classList.toggle('blk',!!(d&&d.vb))}
   if(Date.now()<optNav&&d.id!==curId)return;
   if(!d.id){setRP(false);if(curId){rawPause();au.removeAttribute('src');curId=null;curQ=null;doneQ.clear();indQ=null;$('player').hidden=true;try{emptyPlayer();vBase=0;vAt=Date.now()}catch(e){}render()}return}
   if(Date.now()>=optSeek){vBase=d.pos||0;vAt=Date.now()}
@@ -2517,7 +2550,7 @@ function rcHandle(c){const t=c.type,a=c.arg;
   else if(t==='rate'){$('spd').value=String(a);au.defaultPlaybackRate=au.playbackRate=+a}
   else if(t==='loop'&&a){loopA=a.a;loopB=a.b;loopOn=!!a.on;ui()}
   else if(t==='item'&&a){const it=items.find(i=>i.id===a.id);if(it)doPlay(it,a.q||null)}
-  else if(t==='vol'){if(typeof a==='number')applyVol(a)}
+  else if(t==='vol'){if(typeof a==='number')applyVol(a,true)}
   else if(t==='stop')$('pclose').onclick();
   rcPub(true)}
 /* עטיפות: במצב שלט כל פעולה נשלחת למכשיר המנגן */
@@ -2553,7 +2586,7 @@ async function pickSource(){
   const opts=[];
   if(remote)opts.push({t:'לנגן כאן, במכשיר הזה',sub:'השיר ימשיך מאותה נקודה',ic:'speaker',f:()=>takeOver()});
   list.forEach(x=>{const on=x.id===target,dir=on&&RM&&RM.isOpen&&RM.isOpen(x.id);
-    opts.push({t:x.name,sub:on?('שולט עכשיו'+(dir?' · ⚡ חיבור ישיר':'')):(x.pl?'מנגן עכשיו':'פתוח, לא מנגן'),ic:on?'check':(x.pl?'speaker':'device'),f:()=>{if(!on)attach(x.id)}})});
+    opts.push({t:x.name,sub:on?('שולט עכשיו'+(dir?' · ⚡ חיבור ישיר':'')+' · לחיצה מפסיקה את השליטה'):(x.pl?'מנגן עכשיו':'פתוח, לא מנגן'),ic:on?'check':(x.pl?'speaker':'device'),f:()=>{if(on)stopControl();else attach(x.id)}})});
   opts.push({t:'שינוי שם המכשיר הזה',sub:devName,ic:'pencil',f:()=>renameDev()},{t:'ביטול',ghost:true});
   const h=document.createElement('div');h.className='cmh';h.innerHTML='<b></b><small></small>';
   h.firstChild.textContent=list.length?'שליטה במכשיר אחר':'אין מכשיר אחר פתוח';
@@ -2668,7 +2701,7 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=166;
+const APP_VER=167;
 (function(){
   /* תג סנכרון קצר במקום שורת מצב ארוכה. הטקסט המלא מוצג בחלון ההגדרות */
   const sv=$('sv'),pill=$('syncpill');
