@@ -40,10 +40,12 @@ instructions for GitHub/Firebase screens, and show previews before shipping visu
 - Keep Firestore usage within the free quota (avoid frequent polling/heartbeats).
 - Check layout stability (no jumps while syncing), 44px touch targets, contrast >= 4.5:1,
   light + dark, 375px and landscape before shipping UI changes.
-- Workflow: develop on the session branch, open a PR, the owner merges (or asks Claude to merge).
-- PR link: only when it matters: a PR opened or updated in that reply, or one that is still waiting for the owner
-  and relevant to what is being discussed. Check its state before linking; never re-send a merged PR's link.
-  Put it as the LAST line, clearly labeled (e.g. `🔗 לאישור ב-GitHub: <url>`).
+- Workflow (owner's standing request, 2026-11-11): develop on the session branch, test (emulator/local), open a PR
+  and merge it yourself right away, so the update reaches the app without the owner clicking anything.
+  Only merge after the tests for the change passed; if something could not be tested or is risky/unclear, say so
+  and ask before merging. After merging, tell the owner the new version number (the app updates on next open).
+- PR link: no need to send links to merged PRs. Send one only if a PR is deliberately left open for the owner,
+  as the LAST line, clearly labeled (e.g. `🔗 לאישור ב-GitHub: <url>`).
 
 ## Open thread
 - Audio storage server setup (ON HOLD, owner's progress as of 2026-11-10):

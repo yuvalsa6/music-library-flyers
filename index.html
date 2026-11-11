@@ -859,6 +859,16 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
 #xfer .xsp{width:12px;height:12px;flex:none;border-radius:50%;border:2px solid currentColor;border-top-color:transparent;animation:xsp .8s linear infinite}
 @keyframes xsp{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){#xfer .xsp{animation:none;border-top-color:currentColor;opacity:.6}}
+/* חלון שם למוזיקה חדשה */
+.nnc .nnl{max-height:min(46vh,420px);overflow:auto;margin:0 -4px 12px;padding:2px 4px;text-align:start}
+.nnr+.nnr{margin-top:12px;padding-top:12px;border-top:.5px solid var(--line)}
+.nnf{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;margin-top:8px;padding:8px 12px;border:0;border-radius:12px;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--ink);font:inherit;font-size:14.5px;font-weight:600;text-align:start;cursor:pointer}
+.nnf[hidden]{display:none}
+.nnf .nnk{flex:none;width:22px;height:22px;border-radius:7px;display:grid;place-items:center;background:var(--accent);color:#fff}
+.nnf .nnk svg{width:15px;height:15px}
+.nnf.off{background:var(--soft);color:var(--muted)}
+.nnf.off .nnk{background:transparent;box-shadow:inset 0 0 0 2px var(--line)}
+.nnf.off .nnk svg{visibility:hidden}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -2039,6 +2049,35 @@ function suggestPlace(news){
   const rows=news.filter(i=>i&&!isDead(i)).map(it=>{const b=bestFolder(it);return b?{it,cat:b.cat,sub:b.sub}:null}).filter(Boolean);
   if(!rows.length)return;
   moveDialog('לסדר את השירים החדשים בתיקיות?',(rows.length===1?'לשיר החדש יש':rows.length+' מהשירים החדשים יש להם')+' שם שמתאים לתיקייה קיימת:',rows,true)}
+/* מוזיקה חדשה מהקבצים: חלון לשינוי השם. אם השם מתאים לתיקייה קיימת (למשל שם של צוות),
+   מוצעת צירוף לתיקייה הזו, ואפשר לבטל את ההצעה בלחיצה */
+function nameNewDialog(news){news=news.filter(i=>i&&!isDead(i));if(!news.length||document.querySelector('.nnov'))return;
+  const o=document.createElement('div');o.className='pkov nfov nnov';const many=news.length>1;
+  o.innerHTML='<div class="nfc nnc" role="dialog" aria-modal="true" aria-labelledby="nnt"><span class="fic nfi">'+ICN.music+'</span><h2 id="nnt"></h2><p class="nfw"></p><div class="nnl"></div>'+
+    '<div class="nfb"><button class="nfx">דלג</button><button class="nfok">שמירה</button></div></div>';
+  const c=o.firstChild,list=c.querySelector('.nnl');
+  c.querySelector('#nnt').textContent=many?news.length+' מוזיקות חדשות':'מוזיקה חדשה';
+  c.querySelector('.nfw').textContent=many?'אפשר לשנות את השמות לפני השמירה':'אפשר לשנות את השם לפני השמירה';
+  const rows=news.map(it=>{const r=document.createElement('div');r.className='nnr';
+    const inp=document.createElement('input');inp.className='nfin';inp.value=it.name;inp.setAttribute('aria-label','שם המוזיקה');inp.autocomplete='off';inp.enterKeyHint=many?'next':'done';
+    const fb=document.createElement('button');fb.type='button';fb.className='nnf';fb.hidden=true;fb.innerHTML='<span class="nnk">'+ICN.check+'</span><span class="nnft"></span>';
+    const row={it,inp,fb,dest:null,on:true,touched:false};
+    const upd=()=>{const v=inp.value.trim();const b=v?bestFolder({name:v,cat:it.cat,sub:it.sub}):null;
+      const was=row.dest&&b&&row.dest.cat===b.cat&&row.dest.sub===b.sub;row.dest=b;if(!was&&!row.touched)row.on=true;
+      fb.hidden=!b;if(b){fb.querySelector('.nnft').textContent='לצרף לתיקייה "'+(b.sub?b.sub.split(' / ').pop():b.cat)+'"';fb.classList.toggle('off',!row.on);fb.setAttribute('aria-pressed',row.on)}};
+    fb.onclick=()=>{row.on=!row.on;row.touched=true;upd()};
+    inp.oninput=upd;r.append(inp,fb);list.appendChild(r);upd();return row});
+  rows.forEach((row,k)=>{row.inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();const nx=rows[k+1];if(nx)nx.inp.focus();else save()}if(e.key==='Escape')close()}});
+  const close=()=>{if(o.dataset.done)return;o.dataset.done=1;o.classList.add('out');setTimeout(()=>o.remove(),170)};
+  const save=()=>{let ren=0;const mv=[];
+    rows.forEach(({it,inp,dest,on})=>{const v=inp.value.trim();if(v&&v!==it.name){it.name=v;ren++}if(dest&&on){it.cat=dest.cat;it.sub=dest.sub||'';mv.push(dest)}put(it)});
+    close();
+    if(mv.length===1||(mv.length&&mv.every(d=>d.cat===mv[0].cat&&d.sub===mv[0].sub))){const d=mv[0];filter=d.cat;curCat=d.cat;curSub=d.sub||'';if(d.sub){const sg=d.sub.split(' / ');for(let i=1;i<=sg.length;i++)openK.add(d.cat+'||'+sg.slice(0,i).join(' / '))}}
+    render();
+    if(mv.length){const tg=new Set(mv.map(d=>d.sub?d.sub.split(' / ').pop():d.cat));showOk('✓ '+(mv.length===1?'נוסף':mv.length+' נוספו')+(tg.size===1?' לתיקייה "'+[...tg][0]+'"':' לתיקיות שלהם'))}
+    else if(ren)showOk('✓ השם נשמר')};
+  c.querySelector('.nfok').onclick=save;c.querySelector('.nfx').onclick=close;o.onclick=e=>{if(e.target===o)close()};
+  document.body.appendChild(o);if(!many)setTimeout(()=>{try{rows[0].inp.focus();rows[0].inp.select()}catch(e){}},280)}
 function destPicker(n,defCat,defSub){return folderPicker('להוסיף '+(n===1?'שיר אחד':n+' שירים')+' לאיפה?',{cat:defCat,sub:defSub||''})}
 $('file').onchange=async e=>{
   const files=[...e.target.files].filter(f=>/^(audio|video)/.test(f.type)||/\.(mp3|m4a|wav|aac|ogg|opus|amr|flac|wma|mp4|3gp)$/i.test(f.name));e.target.value='';
@@ -2052,7 +2091,7 @@ $('file').onchange=async e=>{
     items.push(it);putBlob(it);put(it);toCloud(it);newIts.push(it)});
   filter=cat;curCat=cat;curSub=sub;
   openK.clear();if(sub){const sg=sub.split(' / ');for(let i=1;i<=sg.length;i++)openK.add(cat+'||'+sg.slice(0,i).join(' / '))}
-  render();suggestPlace(newIts);
+  render();nameNewDialog(newIts);
 };
 /* ייבוא zip של ייצוא צ'אט וואטסאפ: קורא את הקובץ בלי ספרייה, ומחלץ רק קבצי שמע */
 async function zipEntries(file){
@@ -2856,9 +2895,9 @@ function rcInit(){
 </script>
 <script>
 /* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=181;
+const APP_VER=182;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
