@@ -938,9 +938,9 @@ const au=$('au');
 /* מיקום/אורך/עצירה של הנגן. כששולטים במכשיר אחר, הערכים מגיעים מהמכשיר השני (RCX).
    לא סומכים על דריסת המאפיינים של אלמנט האודיו: באייפון היא לא תמיד נקראת */
 var RCX=null;const NVD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'volume'),NTD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'currentTime'),NDD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'duration'),NPD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'paused');
-function aT(){if(RCX&&RCX.on())return RCX.pos();if(window.PARK)return PARK.t;if(window.rsBusyNow)return window.rsBusyNow.t+(window.rsBusyNow.pl&&window.rsBusyNow.playingSince?(Date.now()-window.rsBusyNow.playingSince)/1000:0);return NTD.get.call(au)}
-function aD(){return RCX&&RCX.on()?RCX.dur():window.PARK?PARK.d:NDD.get.call(au)}
-function aP(){if(RCX&&RCX.on())return RCX.paused();if(window.PARK)return true;if(window.rsBusyNow)return !window.rsBusyNow.pl;return NPD.get.call(au)}
+function aT(){if(RCX&&RCX.on())return RCX.pos();if(window.rsBusyNow)return window.rsBusyNow.t+(window.rsBusyNow.pl&&window.rsBusyNow.playingSince?(Date.now()-window.rsBusyNow.playingSince)/1000:0);return NTD.get.call(au)}
+function aD(){return RCX&&RCX.on()?RCX.dur():NDD.get.call(au)}
+function aP(){if(RCX&&RCX.on())return RCX.paused();if(window.rsBusyNow)return !window.rsBusyNow.pl;return NPD.get.call(au)}
 function aSeek(t){if(RCX&&RCX.on())return RCX.seek(t);try{if(typeof routeSeek==='function'&&routeSeek(t))return;if(typeof duckSeek==='function')duckSeek()}catch(e){}try{NTD.set.call(au,t)}catch(e){}};au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true;
 const PL='תור תרגילים',INBOX='יבוא שירים';
 let db=null,items=[],cats=['נוער','לאומית'],plist=[],filter='קטגוריות',curCat='',curSub='',openK=new Set(),subF='',curId=null,teams=[],runs=[],gapDef=10,view='music',tDay='',gapT=null,D=null,A=null,folders=[],deep=false,stDirty=false,cl=false,addKey=null;
@@ -1049,7 +1049,7 @@ let curQ=null,newQ=null,indQ=null,animUntil=0,doneQ=new Set(),rt=null;const qid=
 function qList(){return plist.map(e=>({e,it:items.find(i=>i.id===qid(e))})).filter(x=>x.it)}
 function qStep(d){const l=qList();let k=l.findIndex(x=>x.e===curQ);if(k<0)k=l.findIndex(x=>x.it.id===curId);return l[k+d]}
 let triedCloud=false;
-au.onerror=()=>{if(window.PARK)return;const it=cur();if(!it||!au.getAttribute('src'))return;
+au.onerror=()=>{const it=cur();if(!it||!au.getAttribute('src'))return;
   if(it.blob&&it.asset&&!triedCloud&&au.src.startsWith('blob:')){triedCloud=true;au.src=assetUrl(it.asset);au.play().catch(()=>{});return}
   triedCloud=false;
   if((it.ac||it.asset)&&it.blob&&!it._cr&&!remote){it._cr=true;try{URL.revokeObjectURL(urls[it.id])}catch(_){}delete urls[it.id];it.blob=null;try{db&&db.transaction('blobs','readwrite').objectStore('blobs').delete(it.id)}catch(_){}fetchAudio(it,true);return}
@@ -1949,7 +1949,7 @@ async function sync(){
   updPlay();
 }
 au.onplay=sync;au.onpause=sync;
-au.onloadedmetadata=()=>{if(window.PARK)return;triedCloud=false;setTimeout(drawMarks,0);au.playbackRate=+$('spd').value;$('dur').textContent=fmt(aD());const it=cur();if(it&&!it.dur&&isFinite(aD())){it.dur=aD();put(it);render()}};
+au.onloadedmetadata=()=>{triedCloud=false;setTimeout(drawMarks,0);au.playbackRate=+$('spd').value;$('dur').textContent=fmt(aD());const it=cur();if(it&&!it.dur&&isFinite(aD())){it.dur=aD();put(it);render()}};
 let dragUntil=0;
 /* smooth clock for the bar: the player reports its time in steps (on iPhone every quarter second or so),
    so between reports the bar moves on by itself and gently follows the real time; big jumps snap */
@@ -2227,14 +2227,14 @@ function plHead(){const h=document.createElement('div');h.className='qbar';
   const gtxt=()=>{gb.textContent='רווח רגיל בין תרגילים · '+gapDef+' שנ׳'};gtxt();
   gb.onclick=()=>openWheel({title:'רווח רגיל בין תרגילים',unit:'שנ׳',value:gapDef,onChange:v=>{gapDef=v;saveLS();gtxt();updGaps()}});
   h.append(s,cl,gb);return h}
-function stopGap(){clearInterval(gapT);gapT=null;$('gapbar').hidden=true;try{if(window.PARK&&PARK.gap)unpark(false)}catch(e){}}
+function stopGap(){clearInterval(gapT);gapT=null;$('gapbar').hidden=true}
 function runGap(sec,nx,qe){stopGap();const b=$('gapbar');b.hidden=false;let s=sec;
   const go=()=>{stopGap();curQ=qe||null;indQ=null;if(qe)doneQ.delete(qe);syncDone();loadItem(nx);startPlay()};
   const draw=()=>{b.innerHTML='';const t=document.createElement('span');t.textContent='הפסקה '+s+' שנ׳, הבא: '+nx.name;
     const sk=document.createElement('button');sk.className='sm';sk.textContent='דלג';sk.onclick=go;
     const st=document.createElement('button');st.className='sm';st.textContent='עצור';st.onclick=stopGap;b.append(t,sk,st)};
   /* לפי השעון (ולא לפי ספירת טיקים), כדי שההפסקה תיגמר בזמן גם כשהטלפון נעול; ושקט מתנגן ברקע כדי שהטלפון לא "יירדם" */
-  const end=Date.now()+sec*1000;draw();window.gapGo=go;window.gapNext=nx.name;try{if(document.hidden)park('gap')}catch(e){}
+  const end=Date.now()+sec*1000;draw();window.gapGo=go;
   gapT=setInterval(()=>{const left=Math.ceil((end-Date.now())/1000);if(left<=0)go();else if(left!==s){s=left;draw()}},250)}
 function log(team,type,ok){if(!team)return false;runs.push({t:Date.now(),d:today(),team,type,ok});saveLS();return true}
 function fillTeams(){const s=$('lt'),v=s.value;s.innerHTML='';
@@ -2736,7 +2736,7 @@ const volShow=v=>{const e=$('devvol');if(!e)return;e.value=String(Math.round(v*1
 {const e=$('devvol');if(e){e.addEventListener('input',()=>{if(rcDiag)rcDiag.vol=(rcDiag.vol||0)+1;const v=(+e.value)/100;volLbl($('devvolt'),v);vrngPaint(e);optVol=Date.now()+1200;const now=Date.now();clearTimeout(volTm);if(now-volLast>=100){volLast=now;rcSend('vol',v)}else volTm=setTimeout(()=>{volLast=Date.now();rcSend('vol',v)},100)});
   e.addEventListener('change',()=>{clearTimeout(volTm);optVol=Date.now()+1200;rcSend('vol',(+e.value)/100)});
   ['pointerdown','touchstart'].forEach(ev=>e.addEventListener(ev,x=>x.stopPropagation(),{passive:true}))}}
-function rcHandle(c){const t=c.type,a=c.arg;/* a command from another device while the lock-screen hold is on: put the song back first */if(window.PARK&&t!=='hello'&&t!=='bye'){try{unpark(false)}catch(e){}}
+function rcHandle(c){const t=c.type,a=c.arg;
   if(t==='hello'){rcPub(true);return}
   if(t==='bye'){lastRemoteT=0;ctlEnded();return}
   if(t==='play')startPlay();
@@ -2899,7 +2899,7 @@ function rcInit(){
 /* ===== הנגן נשאר פתוח: שומרים איזה שיר פתוח ובאיזו נקודה, ואחרי רענון או אחרי שהטלפון סגר את האפליקציה
    הנגן נפתח שוב על אותו שיר ואותה נקודה (בהשהיה) ===== */
 function plSave(){try{if(remote)return;if(!curId){localStorage.removeItem('plState');return}
-  localStorage.setItem('plState',JSON.stringify({id:curId,q:curQ||null,t:(window.PARK?PARK.t:NTD.get.call(au))||0,at:Date.now()}))}catch(e){}}
+  localStorage.setItem('plState',JSON.stringify({id:curId,q:curQ||null,t:NTD.get.call(au)||0,at:Date.now()}))}catch(e){}}
 setInterval(plSave,2000);/* parked: the song's own point, not the silence */['pause','seeked','loadedmetadata'].forEach(ev=>au.addEventListener(ev,plSave));
 addEventListener('pagehide',plSave);document.addEventListener('visibilitychange',()=>{if(document.hidden)plSave()});
 {let st=null;try{st=JSON.parse(localStorage.getItem('plState')||'null')}catch(e){}
@@ -2909,55 +2909,28 @@ addEventListener('pagehide',plSave);document.addEventListener('visibilitychange'
         au.addEventListener('loadedmetadata',go,{once:true});if(au.readyState>=1)go();render()}catch(e){}},300)}}
 /* ===== נגן ברקע ובמסך הנעול: שם המוזיקה, הפעלה/עצירה, הבא/הקודם וקפיצות בשיר ===== */
 const MS=('mediaSession' in navigator)?navigator.mediaSession:null;
-let silU='';function silentUrl(){if(silU)return silU;const sr=8000,n=sr*20,b=new ArrayBuffer(44+n),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
-  w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);
-  for(let i=0;i<n;i++)v.setUint8(44+i,128);return silU=URL.createObjectURL(new Blob([b],{type:'audio/wav'}))}
 function msMeta(title,artist){if(!MS)return;try{const it=cur();if(!it||remote){MS.metadata=null;return}
   const where=it.sub?it.sub.split(' / ').pop():(it.cat||'');
   MS.metadata=new MediaMetadata({title:title||it.name,artist:artist||where,album:'ספריית שמע לאימונים',
     artwork:[{src:'icons/icon-192.png',sizes:'192x192',type:'image/png'},{src:'icons/icon-512.png',sizes:'512x512',type:'image/png'}]})}catch(e){}}
 function msPos(){if(!MS||remote)return;try{MS.playbackState=aP()?'paused':'playing';
   const d=aD(),t=aT();if(MS.setPositionState&&d>0&&isFinite(d))MS.setPositionState({duration:d,position:Math.min(Math.max(0,t),d),playbackRate:au.playbackRate||1})}catch(e){}}
-function msLog(m){try{const L=JSON.parse(localStorage.getItem('msLog')||'[]');const d=new Date();L.push(('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)+' '+m);localStorage.setItem('msLog',JSON.stringify(L.slice(-8)))}catch(e){}}
-{let was=null;try{was=localStorage.getItem('msHold')}catch(e){}if(was)msLog('האפליקציה נפתחה מחדש (הטלפון סגר אותה בזמן עצירה, '+was+')');try{localStorage.removeItem('msHold')}catch(e){}}
-/* הנגן נשאר במסך הנעול גם בעצירה ובהפסקה בין שירים: האייפון מוריד נגן של אתר שלא מנגן כלום.
-   לכן באותו נגן עצמו (לא בנגן נוסף, אחרת האייפון מתבלבל בין השניים) מתנגן שקט, והשיר מחכה בצד באותה נקודה.
-   "הפעלה" מחזירה את השיר לנגן וממשיכה ממנו. חוזרים לאפליקציה: השיר חוזר לנגן, עצור */
-window.PARK=null;let parkT=0;
-function hm(){const d=new Date();return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2)}
-function parkMeta(){if(!PARK)return;if(PARK.gap)msMeta('הפסקה · הבא: '+(window.gapNext||''),'');else if(PARK.go)msMeta('⏸ עצור · הבא: '+(window.gapNext||''),'לחיצה על הכפתור ממשיכה');else msMeta('⏸ '+((cur()||{}).name||''),'עצור · לחיצה על הכפתור ממשיכה')}
-function park(kind){if(window.PARK||remote||!curId||!document.hidden||(typeof gainOn!=='undefined'&&gainOn)||(typeof ctlOn!=='undefined'&&ctlOn))return false;
-  const t=kind==='gap'?(NDD.get.call(au)||0):(NTD.get.call(au)||0);
-  window.PARK={id:curId,t,d:NDD.get.call(au)||0,gap:kind==='gap',go:null};
-  try{au.loop=true;au.src=silentUrl();au.play().catch(()=>{msLog('הטלפון לא נתן להחזיק את הנגן');unpark(false)})}catch(e){unpark(false);return false}
-  parkMeta();msLog(kind==='gap'?'הפסקה במסך נעול: מחזיק את הנגן':'עצירה במסך נעול: מחזיק את הנגן');try{localStorage.setItem('msHold',hm())}catch(e){}
-  clearTimeout(parkT);parkT=setTimeout(()=>{if(PARK&&!PARK.gap){msLog('4 שעות בעצירה: משחרר את הנגן');unpark(false)}},4*3600e3);return true}
-function unpark(play){const P=window.PARK;if(!P)return;window.PARK=null;clearTimeout(parkT);try{localStorage.removeItem('msHold')}catch(e){}au.loop=false;
-  const it=items.find(i=>i.id===P.id);if(!it){try{au.pause()}catch(e){}return}
-  au.src=urlOf(it)+(P.t>0.05&&!/#/.test(urlOf(it))?'#t='+P.t.toFixed(2):'');
-  const want=au.src;au.addEventListener('loadedmetadata',()=>{if(au.src!==want)return;try{if(Math.abs(NTD.get.call(au)-P.t)>0.4)NTD.set.call(au,P.t)}catch(e){}msMeta();msPos()},{once:true});
-  if(play){au.play().catch(()=>{});msLog('המשך ניגון מהמסך הנעול')}else if(!document.hidden)msLog('חזרה לאפליקציה')}
-document.addEventListener('visibilitychange',()=>{if(document.hidden){if(PARK)return;if(gapT)park('gap');else if(curId&&aP())park('hold')}
-  else if(PARK&&!PARK.gap)unpark(false)});
-function msResume(){if(window.PARK){if(PARK.go){const g=PARK.go;PARK.go=null;g()}else unpark(true);return}
-  if(gapT){clearInterval(gapT);gapT=null;$('gapbar').hidden=true}const t=NTD.get.call(au);
+/* הנגן במסך הנעול עובד כמו כל נגן רגיל: הפעלה, עצירה, הבא/הקודם וקפיצות משפיעים על השיר באפליקציה, ותו לא */
+function msResume(){const t=NTD.get.call(au);
   au.play().then(msPos).catch(()=>{/* the phone dropped the song while in the background: load it again at the same point */
     try{const it=cur();if(!it)return;au.src=urlOf(it);au.addEventListener('loadedmetadata',()=>{try{rawSeek(t)}catch(e){}au.play().then(msPos).catch(()=>{})},{once:true});au.play().catch(()=>{})}catch(e){}})}
-function msPause(){if(window.PARK){if(PARK.gap){/* pause during a rest: stop the countdown, keep the player */clearInterval(gapT);gapT=null;$('gapbar').hidden=true;PARK.gap=false;PARK.go=window.gapGo;parkMeta();return}
-    /* the phone shows "pause" while the silence plays: treat it as "continue" */unpark(true);return}
-  if(gapT){stopGap();msPos();return}
-  if(aP())return;if(document.hidden&&curId&&!remote){au.pause();park('hold');return}$('pp').click()}
 if(MS){const H=(a,f)=>{try{MS.setActionHandler(a,f)}catch(e){}};
   /* הפעלה מהמסך הנעול: מתחילים לנגן מיד, בלי ספירה לאחור (ברקע הטלפון לא מריץ את הספירה, והשיר היה נתקע) */
-  H('play',()=>{if(window.PARK){msResume();return}if(gapT)return;if(remote||!curId){if(aP())$('pp').click();return}if(!aP())return;msResume()});H('pause',msPause);
+  H('play',()=>{if(remote||!curId){if(aP())$('pp').click();return}if(gapT){if(window.gapGo)window.gapGo();return}if(aP())msResume()});
+  H('pause',()=>{if(gapT){stopGap();msPos();return}if(remote){if(!aP())$('pp').click();return}if(!aP())au.pause()});
   H('nexttrack',()=>$('next').click());H('previoustrack',()=>$('prev').click());
   H('seekbackward',d=>aSeek(Math.max(0,aT()-((d&&d.seekOffset)||10))));H('seekforward',d=>aSeek(Math.min(aD()||0,aT()+((d&&d.seekOffset)||10))));
-  H('seekto',d=>{if(d&&isFinite(d.seekTime))aSeek(d.seekTime)});H('stop',()=>{stopGap();if(window.PARK)unpark(false);au.pause()});
-  ['play','loadedmetadata','durationchange'].forEach(ev=>au.addEventListener(ev,()=>{if(window.PARK)parkMeta();else msMeta();msPos()}));
+  H('seekto',d=>{if(d&&isFinite(d.seekTime))aSeek(d.seekTime)});H('stop',()=>{stopGap();au.pause()});
+  ['play','loadedmetadata','durationchange'].forEach(ev=>au.addEventListener(ev,()=>{msMeta();msPos()}));
   ['pause','seeked','ratechange','ended'].forEach(ev=>au.addEventListener(ev,msPos))}
-const APP_VER=189;
+const APP_VER=190;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={189:['הנגן במסך הנעול: הכפתורים מראים נכון אם השיר מתנגן או עצור, והנגן לא נעלם כשפותחים את הטלפון','בזמן עצירה במסך הנעול רואים ⏸ ליד שם השיר'],188:['הנגן במסך הנעול נשמר זמן ארוך יותר בזמן עצירה','בהגדרות, למטה: יומן קצר של מה שקרה לנגן במסך הנעול'],187:['הפעלה מהמסך הנעול אחרי עצירה ממשיכה את השיר (ולא עוברת לאפל מיוזיק)'],186:['באייפון: הנגן נשאר במסך הנעול גם כשהמוזיקה עצורה (עד חצי שעה)'],185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={190:['הנגן במסך הנעול עובד כמו נגן רגיל: הפעלה ועצירה משפיעות ישירות על השיר באפליקציה, בלי טריקים'],189:['הנגן במסך הנעול: הכפתורים מראים נכון אם השיר מתנגן או עצור, והנגן לא נעלם כשפותחים את הטלפון','בזמן עצירה במסך הנעול רואים ⏸ ליד שם השיר'],188:['הנגן במסך הנעול נשמר זמן ארוך יותר בזמן עצירה','בהגדרות, למטה: יומן קצר של מה שקרה לנגן במסך הנעול'],187:['הפעלה מהמסך הנעול אחרי עצירה ממשיכה את השיר (ולא עוברת לאפל מיוזיק)'],186:['באייפון: הנגן נשאר במסך הנעול גם כשהמוזיקה עצורה (עד חצי שעה)'],185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
@@ -3000,7 +2973,7 @@ setTimeout(()=>{try{whatsNew()}catch(e){}},0);
         '<div class="gr"><div class="k">'+(code?'החלפת ספרייה':'הזנת קוד ספרייה')+'</div><button id="cchg">'+(code?'החלף קוד':'הזן קוד')+'</button></div></div>':'')+
       '<div class="gl">מסך ועדכונים</div><div class="grp"><button class="gr gtg" id="awk" role="switch"><div class="k">השאר את המסך דלוק<small>כל עוד האפליקציה פתוחה, גם כשלא מתנגנת מוזיקה</small></div><span class="tgl"><i></i></span></button>'+
         '<div class="gr"><div class="k">גרסה '+APP_VER+'<small id="updst"></small></div><button id="updbtn">בדיקת עדכון</button></div></div>'+
-      '<div class="ver">ספריית שמע לאימונים · גרסה '+APP_VER+'</div><div class="ver" id="mslog"></div></div>';
+      '<div class="ver">ספריית שמע לאימונים · גרסה '+APP_VER+'</div></div>';
     document.body.appendChild(o);
     const st=$('store');o.querySelector('#stg').appendChild(st);storeOpen=true;st.hidden=!D;if(D){st._h='';storeUI()}else{o.querySelector('#stg').innerHTML='<div class="gr"><div class="k" style="color:var(--muted)">האחסון בענן זמין אחרי חיבור לספרייה</div></div>'}
     upd();
@@ -3012,8 +2985,7 @@ setTimeout(()=>{try{whatsNew()}catch(e){}},0);
     {const aw=o.querySelector('#awk'),upd=()=>{aw.classList.toggle('off',!keepAwake);aw.setAttribute('aria-checked',keepAwake)};upd();
       if(!('wakeLock' in navigator)){aw.disabled=true;aw.querySelector('small').textContent='המכשיר או הדפדפן הזה לא מאפשרים להשאיר את המסך דלוק'}
       aw.onclick=()=>{keepAwake=!keepAwake;try{localStorage.setItem('keepAwake',keepAwake?'1':'0')}catch(e){}upd();wakeSync()};
-      {const ml=o.querySelector('#mslog');let L=[];try{L=JSON.parse(localStorage.getItem('msLog')||'[]')}catch(e){}if(ml){ml.style.whiteSpace='pre-line';ml.textContent=L.length?'יומן נגן במסך הנעול:\n'+L.slice().reverse().join('\n'):''}}
-      const ub=o.querySelector('#updbtn'),us=o.querySelector('#updst');ub.onclick=()=>{ub.disabled=true;checkUpdate(t=>{us.textContent=t}).finally(()=>{ub.disabled=false})}}
+            const ub=o.querySelector('#updbtn'),us=o.querySelector('#updst');ub.onclick=()=>{ub.disabled=true;checkUpdate(t=>{us.textContent=t}).finally(()=>{ub.disabled=false})}}
     const cc=o.querySelector('#cchg');if(cc)cc.onclick=()=>{close();setTimeout(()=>window.libCodeDialog&&libCodeDialog(),220)};
   }
   pill.onclick=sheet;$('setbtn').onclick=sheet;
