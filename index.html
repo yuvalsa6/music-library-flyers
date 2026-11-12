@@ -2920,22 +2920,29 @@ function msMeta(over){if(!MS)return;try{const it=cur();if(!it||remote){MS.metada
   const where=it.sub?it.sub.split(' / ').pop():(it.cat||'');
   MS.metadata=new MediaMetadata({title:over||it.name,artist:over?it.name:where,album:'ספריית שמע לאימונים',
     artwork:[{src:'icons/icon-192.png',sizes:'192x192',type:'image/png'},{src:'icons/icon-512.png',sizes:'512x512',type:'image/png'}]})}catch(e){}}
-function msPos(){if(!MS||remote)return;try{MS.playbackState=(kaEl&&!kaEl.paused)||!au.paused?'playing':'paused';
+function msPos(){if(!MS||remote)return;try{MS.playbackState=(kaEl&&!kaEl.paused&&gapT)||!au.paused?'playing':'paused';
   const d=NDD.get.call(au),t=NTD.get.call(au);if(MS.setPositionState&&d>0&&isFinite(d))MS.setPositionState({duration:d,position:Math.min(Math.max(0,t),d),playbackRate:au.playbackRate||1})}catch(e){}}
+/* עצירה כשהטלפון נעול: האייפון מוריד מהמסך הנעול נגן של אתר שלא מנגן כלום. כדי שהנגן יישאר זמין כמו בספוטיפיי,
+   בזמן העצירה מתנגן ברקע שקט מוחלט (עד 30 דקות). השיר עצמו עצור ומחכה באותה נקודה. כשחוזרים לאפליקציה זה נפסק */
+let hold=false,holdT=0;
+function holdOn(){if(remote||!curId||!document.hidden||gapT||hold)return;hold=true;keepAlive(true);clearTimeout(holdT);holdT=setTimeout(holdOff,30*60e3);setTimeout(msPos,50)}
+function holdOff(){clearTimeout(holdT);if(!hold)return;hold=false;if(!gapT)keepAlive(false);msPos()}
+au.addEventListener('pause',()=>{if(document.hidden&&!au.ended)holdOn()});au.addEventListener('play',holdOff);
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(curId&&aP()&&!gapT)holdOn()}else holdOff()});
 function msResume(){try{stopGap()}catch(e){}const t=NTD.get.call(au);
   au.play().then(msPos).catch(()=>{/* the phone dropped the song while in the background: load it again at the same point */
     try{const it=cur();if(!it)return;au.src=urlOf(it);au.addEventListener('loadedmetadata',()=>{try{rawSeek(t)}catch(e){}au.play().then(msPos).catch(()=>{})},{once:true});au.play().catch(()=>{})}catch(e){}})}
 if(MS){const H=(a,f)=>{try{MS.setActionHandler(a,f)}catch(e){}};
   /* הפעלה מהמסך הנעול: מתחילים לנגן מיד, בלי ספירה לאחור (ברקע הטלפון לא מריץ את הספירה, והשיר היה נתקע) */
-  H('play',()=>{if(gapT)return;if(remote||!curId){if(aP())$('pp').click();return}if(!aP())return;msResume()});H('pause',()=>{if(gapT){stopGap();msPos();return}if(!aP())$('pp').click()});
+  H('play',()=>{if(gapT)return;if(remote||!curId){if(aP())$('pp').click();return}if(!aP())return;msResume()});H('pause',()=>{if(gapT){stopGap();msPos();return}if(hold&&aP()){msResume();return}if(!aP())$('pp').click()});
   H('nexttrack',()=>$('next').click());H('previoustrack',()=>$('prev').click());
   H('seekbackward',d=>aSeek(Math.max(0,aT()-((d&&d.seekOffset)||10))));H('seekforward',d=>aSeek(Math.min(aD()||0,aT()+((d&&d.seekOffset)||10))));
   H('seekto',d=>{if(d&&isFinite(d.seekTime))aSeek(d.seekTime)});H('stop',()=>{stopGap();au.pause()});
   ['play','loadedmetadata','durationchange'].forEach(ev=>au.addEventListener(ev,()=>{msMeta();msPos()}));
   ['pause','seeked','ratechange','ended'].forEach(ev=>au.addEventListener(ev,msPos))}
-const APP_VER=185;
+const APP_VER=186;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={186:['באייפון: הנגן נשאר במסך הנעול גם כשהמוזיקה עצורה (עד חצי שעה)'],185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
