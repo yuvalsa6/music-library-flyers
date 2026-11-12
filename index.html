@@ -1683,7 +1683,7 @@ let ctlOn=false;
 function ctlRestore(type){if(type==='vol')return;let v=1;try{v=parseFloat(localStorage.getItem('rvol'))}catch(e){}
   if(v>0&&Math.abs(v-1)>0.005&&Math.abs(VOL-v)>0.005){applyVol(v,true);try{lvolShow()}catch(e){}if(isHost)rcPub(true)}}
 function ctlEnded(){ctlOn=false;if(typeof IOSV==='undefined'||!IOSV)return;if(Math.abs(VOL-1)>0.001){applyVol(1);try{lvolShow()}catch(e){}}if(gainOn)routeReset=true}
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&routeReset&&aP()&&!remote){try{sessionStorage.setItem('quietReload','1')}catch(e){}location.reload()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&routeReset&&aP()&&!remote&&!gapT){try{sessionStorage.setItem('quietReload','1')}catch(e){}location.reload()}});
 function artIc(isCur){return isCur&&!aP()?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
@@ -2227,13 +2227,15 @@ function plHead(){const h=document.createElement('div');h.className='qbar';
   const gtxt=()=>{gb.textContent='רווח רגיל בין תרגילים · '+gapDef+' שנ׳'};gtxt();
   gb.onclick=()=>openWheel({title:'רווח רגיל בין תרגילים',unit:'שנ׳',value:gapDef,onChange:v=>{gapDef=v;saveLS();gtxt();updGaps()}});
   h.append(s,cl,gb);return h}
-function stopGap(){clearInterval(gapT);gapT=null;$('gapbar').hidden=true}
+function stopGap(){clearInterval(gapT);gapT=null;$('gapbar').hidden=true;try{keepAlive(false)}catch(e){}}
 function runGap(sec,nx,qe){stopGap();const b=$('gapbar');b.hidden=false;let s=sec;
   const go=()=>{stopGap();curQ=qe||null;indQ=null;if(qe)doneQ.delete(qe);syncDone();loadItem(nx);startPlay()};
   const draw=()=>{b.innerHTML='';const t=document.createElement('span');t.textContent='הפסקה '+s+' שנ׳, הבא: '+nx.name;
     const sk=document.createElement('button');sk.className='sm';sk.textContent='דלג';sk.onclick=go;
     const st=document.createElement('button');st.className='sm';st.textContent='עצור';st.onclick=stopGap;b.append(t,sk,st)};
-  draw();gapT=setInterval(()=>{s--;if(s<=0)go();else draw()},1000)}
+  /* לפי השעון (ולא לפי ספירת טיקים), כדי שההפסקה תיגמר בזמן גם כשהטלפון נעול; ושקט מתנגן ברקע כדי שהטלפון לא "יירדם" */
+  const end=Date.now()+sec*1000;draw();try{keepAlive(true,'הפסקה · הבא: '+nx.name)}catch(e){}
+  gapT=setInterval(()=>{const left=Math.ceil((end-Date.now())/1000);if(left<=0)go();else if(left!==s){s=left;draw()}},250)}
 function log(team,type,ok){if(!team)return false;runs.push({t:Date.now(),d:today(),team,type,ok});saveLS();return true}
 function fillTeams(){const s=$('lt'),v=s.value;s.innerHTML='';
   (teams.length?teams:['אין צוותים']).forEach(t=>{const o=document.createElement('option');o.value=teams.length?t:'';o.textContent=t;s.appendChild(o)});if(teams.includes(v))s.value=v}
@@ -2894,10 +2896,31 @@ function rcInit(){
 (async()=>{loadLS();fillTeams();tabsR();try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist()}catch(e){}await openDB();await loadAll();items.forEach(i=>{if(!cats.includes(i.cat))cats.push(i.cat)});render();stat();await cloud();cl=true;purgeDead();rcInit();syncDown();fillTeams();items.forEach(i=>{if(!cats.includes(i.cat))cats.push(i.cat)});render();stat();syncUp();relayOwner();relayWatchInit();drvSweep()})();
 </script>
 <script>
-/* ===== שכבת עיצוב: התנהגות ===== */
-const APP_VER=182;
+/* ===== נגן ברקע ובמסך הנעול: שם המוזיקה, הפעלה/עצירה, הבא/הקודם וקפיצות בשיר ===== */
+const MS=('mediaSession' in navigator)?navigator.mediaSession:null;
+let kaEl=null;
+function silentUrl(){const sr=8000,n=sr,b=new ArrayBuffer(44+n),v=new DataView(b),w=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};
+  w(0,'RIFF');v.setUint32(4,36+n,true);w(8,'WAVE');w(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,sr,true);v.setUint32(28,sr,true);v.setUint16(32,1,true);v.setUint16(34,8,true);w(36,'data');v.setUint32(40,n,true);
+  for(let i=0;i<n;i++)v.setUint8(44+i,128);return URL.createObjectURL(new Blob([b],{type:'audio/wav'}))}
+/* בזמן הפסקה בין שירים בתור: שקט מתנגן, כדי שהטלפון ימשיך להריץ את האפליקציה גם כשהמסך נעול */
+function keepAlive(on,title){try{if(on){if(remote)return;if(!kaEl){kaEl=new Audio();kaEl.loop=true;kaEl.src=silentUrl()}kaEl.play().catch(()=>{});if(title)msMeta(title)}
+  else if(kaEl&&!kaEl.paused){kaEl.pause();msMeta()}}catch(e){}}
+function msMeta(over){if(!MS)return;try{const it=cur();if(!it||remote){MS.metadata=null;return}
+  const where=it.sub?it.sub.split(' / ').pop():(it.cat||'');
+  MS.metadata=new MediaMetadata({title:over||it.name,artist:over?it.name:where,album:'ספריית שמע לאימונים',
+    artwork:[{src:'icons/icon-192.png',sizes:'192x192',type:'image/png'},{src:'icons/icon-512.png',sizes:'512x512',type:'image/png'}]})}catch(e){}}
+function msPos(){if(!MS||remote)return;try{MS.playbackState=(kaEl&&!kaEl.paused)||!au.paused?'playing':'paused';
+  const d=NDD.get.call(au),t=NTD.get.call(au);if(MS.setPositionState&&d>0&&isFinite(d))MS.setPositionState({duration:d,position:Math.min(Math.max(0,t),d),playbackRate:au.playbackRate||1})}catch(e){}}
+if(MS){const H=(a,f)=>{try{MS.setActionHandler(a,f)}catch(e){}};
+  H('play',()=>{if(gapT)return;if(aP())$('pp').click()});H('pause',()=>{if(gapT){stopGap();msPos();return}if(!aP())$('pp').click()});
+  H('nexttrack',()=>$('next').click());H('previoustrack',()=>$('prev').click());
+  H('seekbackward',d=>aSeek(Math.max(0,aT()-((d&&d.seekOffset)||10))));H('seekforward',d=>aSeek(Math.min(aD()||0,aT()+((d&&d.seekOffset)||10))));
+  H('seekto',d=>{if(d&&isFinite(d.seekTime))aSeek(d.seekTime)});H('stop',()=>{stopGap();au.pause()});
+  ['play','loadedmetadata','durationchange'].forEach(ev=>au.addEventListener(ev,()=>{msMeta();msPos()}));
+  ['pause','seeked','ratechange','ended'].forEach(ev=>au.addEventListener(ev,msPos))}
+const APP_VER=183;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
