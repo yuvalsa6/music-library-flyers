@@ -56,5 +56,10 @@ instructions for GitHub/Firebase screens, and show previews before shipping visu
   B2_ENDPOINT, B2_BUCKET, B2_KEY_ID (secret), B2_APP_KEY (secret), LIB_CODES (secret) → test `/ping?k=<code>` →
   owner sends the workers.dev URL → set AUDIO_HOST in config.js (AUDIO_MIGRATE=false) → test one song on two
   devices → AUDIO_MIGRATE=true. Never ask for or write the keys or the library code.
+- iPhone lock screen (2026-11-12): after ~10s paused, lock-screen "play" goes to Apple Music. Confirmed an iOS limit
+  for web pages: the bare test page `test/` (plain <audio> + MediaMetadata) does the same, in Safari too.
+  Tried and dropped: silent "hold" in a second element (iOS bound the controls to it, buttons inverted) and in the
+  same element (owner disliked). Current app: iOS handles play/pause/seek natively; app sets metadata, next/prev,
+  audioSession='playback'. Only real fix: a native wrapper (e.g. Capacitor + TestFlight). Waiting for owner's choice.
 - New app icon: paused. Favored direction: a ♫ made of two acrobats (flyer in a handstand on the
   left note head, base standing on the right note head holding her foot; her leg is the beam).
