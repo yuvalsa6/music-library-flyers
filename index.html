@@ -1683,7 +1683,7 @@ let ctlOn=false;
 function ctlRestore(type){if(type==='vol')return;let v=1;try{v=parseFloat(localStorage.getItem('rvol'))}catch(e){}
   if(v>0&&Math.abs(v-1)>0.005&&Math.abs(VOL-v)>0.005){applyVol(v,true);try{lvolShow()}catch(e){}if(isHost)rcPub(true)}}
 function ctlEnded(){ctlOn=false;if(typeof IOSV==='undefined'||!IOSV)return;if(Math.abs(VOL-1)>0.001){applyVol(1);try{lvolShow()}catch(e){}}if(gainOn)routeReset=true}
-document.addEventListener('visibilitychange',()=>{if(document.hidden&&routeReset&&aP()&&!remote&&!gapT){try{sessionStorage.setItem('quietReload','1')}catch(e){}location.reload()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&routeReset&&aP()&&!remote&&!gapT&&!curId){try{sessionStorage.setItem('quietReload','1')}catch(e){}location.reload()}});
 function artIc(isCur){return isCur&&!aP()?'<span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>':isCur?IC.play:ICX.note}
 async function folderMenu(cat,p){
   const parent=p.includes(' / ')?p.slice(0,p.lastIndexOf(' / ')):'',name=p.split(' / ').pop(),sib=kids(cat,parent),ix=sib.indexOf(name),key=cat+'||'+p;
@@ -2896,6 +2896,17 @@ function rcInit(){
 (async()=>{loadLS();fillTeams();tabsR();try{if(navigator.storage&&navigator.storage.persist)await navigator.storage.persist()}catch(e){}await openDB();await loadAll();items.forEach(i=>{if(!cats.includes(i.cat))cats.push(i.cat)});render();stat();await cloud();cl=true;purgeDead();rcInit();syncDown();fillTeams();items.forEach(i=>{if(!cats.includes(i.cat))cats.push(i.cat)});render();stat();syncUp();relayOwner();relayWatchInit();drvSweep()})();
 </script>
 <script>
+/* ===== הנגן נשאר פתוח: שומרים איזה שיר פתוח ובאיזו נקודה, ואחרי רענון או אחרי שהטלפון סגר את האפליקציה
+   הנגן נפתח שוב על אותו שיר ואותה נקודה (בהשהיה) ===== */
+function plSave(){try{if(remote)return;if(!curId){localStorage.removeItem('plState');return}
+  localStorage.setItem('plState',JSON.stringify({id:curId,q:curQ||null,t:NTD.get.call(au)||0,at:Date.now()}))}catch(e){}}
+setInterval(plSave,2000);['pause','seeked','loadedmetadata'].forEach(ev=>au.addEventListener(ev,plSave));
+addEventListener('pagehide',plSave);document.addEventListener('visibilitychange',()=>{if(document.hidden)plSave()});
+{let st=null;try{st=JSON.parse(localStorage.getItem('plState')||'null')}catch(e){}
+  if(st&&st.id&&Date.now()-(st.at||0)<24*3600e3){const t0=Date.now();
+    const iv=setInterval(()=>{if(curId||remote||Date.now()-t0>30000){clearInterval(iv);return}const it=items.find(i=>i.id===st.id);if(!it)return;clearInterval(iv);
+      try{if(st.q&&plist.includes(st.q))curQ=st.q;loadItem(it);const go=()=>{try{if(st.t>0&&curId===it.id&&aP())aSeek(st.t)}catch(e){}};
+        au.addEventListener('loadedmetadata',go,{once:true});if(au.readyState>=1)go();render()}catch(e){}},300)}}
 /* ===== נגן ברקע ובמסך הנעול: שם המוזיקה, הפעלה/עצירה, הבא/הקודם וקפיצות בשיר ===== */
 const MS=('mediaSession' in navigator)?navigator.mediaSession:null;
 let kaEl=null;
@@ -2922,9 +2933,9 @@ if(MS){const H=(a,f)=>{try{MS.setActionHandler(a,f)}catch(e){}};
   H('seekto',d=>{if(d&&isFinite(d.seekTime))aSeek(d.seekTime)});H('stop',()=>{stopGap();au.pause()});
   ['play','loadedmetadata','durationchange'].forEach(ev=>au.addEventListener(ev,()=>{msMeta();msPos()}));
   ['pause','seeked','ratechange','ended'].forEach(ev=>au.addEventListener(ev,msPos))}
-const APP_VER=184;
+const APP_VER=185;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
@@ -3018,12 +3029,14 @@ setTimeout(()=>{try{whatsNew()}catch(e){}},0);
    כשהיא מוכנה, מרעננים לבד, אבל לא באמצע שיר ולא כשחלון פתוח: אז מציגים פס "גרסה חדשה" ללחיצה. */
 if('serviceWorker' in navigator&&location.protocol!=='file:'){
   const hadSW=!!navigator.serviceWorker.controller;let reloading=false;
-  const busy=()=>!aP()||document.querySelector('.pkov,#lcx,.cfx,.whov')||!$('ask').hidden;
+  const busy=()=>document.hidden||!aP()||document.querySelector('.pkov,#lcx,.cfx,.whov')||!$('ask').hidden;
   const reload=()=>{if(reloading)return;reloading=true;location.reload()};
-  const offer=()=>{if(!busy())return reload();let b=$('updbar');if(b)return;b=document.createElement('button');b.id='updbar';
+  const offer=()=>{if(!busy()&&!curId)return reload();let b=$('updbar');if(b)return;b=document.createElement('button');b.id='updbar';
     b.style.cssText='position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:120;border:0;border-radius:999px;background:var(--accent);color:#fff;font:inherit;font-weight:600;padding:10px 18px;box-shadow:0 6px 20px rgba(0,0,0,.25);cursor:pointer';
     b.textContent='גרסה חדשה מוכנה · לחץ לעדכון';b.onclick=reload;document.body.appendChild(b);
-    au.addEventListener('pause',()=>{if(!busy())reload()},{once:true})};
+  };
+  /* חוזרים לאפליקציה כשיש גרסה חדשה מוכנה והשיר לא מתנגן: מרעננים, והנגן חוזר לאותו שיר ולאותה נקודה */
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&$('updbar'))setTimeout(()=>{if($('updbar')&&!busy()){try{plSave()}catch(e){}reload()}},400)});
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadSW)offer()});
   const check=()=>navigator.serviceWorker.getRegistration().then(r=>r&&r.update()).catch(()=>{});
   addEventListener('load',()=>navigator.serviceWorker.register('sw.js').then(check).catch(()=>{}));
