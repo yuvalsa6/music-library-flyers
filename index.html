@@ -938,8 +938,8 @@ const au=$('au');
 /* מיקום/אורך/עצירה של הנגן. כששולטים במכשיר אחר, הערכים מגיעים מהמכשיר השני (RCX).
    לא סומכים על דריסת המאפיינים של אלמנט האודיו: באייפון היא לא תמיד נקראת */
 var RCX=null;const NVD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'volume'),NTD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'currentTime'),NDD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'duration'),NPD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'paused');
-function aT(){if(RCX&&RCX.on())return RCX.pos();if(window.rsBusyNow)return window.rsBusyNow.t+(window.rsBusyNow.pl&&window.rsBusyNow.playingSince?(Date.now()-window.rsBusyNow.playingSince)/1000:0);return NTD.get.call(au)}
-function aD(){return RCX&&RCX.on()?RCX.dur():NDD.get.call(au)}
+function aT(){if(RCX&&RCX.on())return RCX.pos();if(window.REL)return REL.t;if(window.rsBusyNow)return window.rsBusyNow.t+(window.rsBusyNow.pl&&window.rsBusyNow.playingSince?(Date.now()-window.rsBusyNow.playingSince)/1000:0);return NTD.get.call(au)}
+function aD(){return RCX&&RCX.on()?RCX.dur():window.REL?REL.d:NDD.get.call(au)}
 function aP(){if(RCX&&RCX.on())return RCX.paused();if(window.rsBusyNow)return !window.rsBusyNow.pl;return NPD.get.call(au)}
 function aSeek(t){if(RCX&&RCX.on())return RCX.seek(t);try{if(typeof routeSeek==='function'&&routeSeek(t))return;if(typeof duckSeek==='function')duckSeek()}catch(e){}try{NTD.set.call(au,t)}catch(e){}};au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true;
 const PL='תור תרגילים',INBOX='יבוא שירים';
@@ -1879,7 +1879,7 @@ function warm(it){try{if(!it||!it.blob||remote)return;const u=urlOf(it);if(warmA
 document.addEventListener('pointerdown',e=>{const r=e.target.closest&&e.target.closest('.item[data-iid]');if(r)warm(items.find(i=>i.id===r.dataset.iid))},{passive:true,capture:true});
 function warmNext(){try{const n=curQ&&qStep(1);if(n)warm(n.it)}catch(e){}}
 au.addEventListener('playing',()=>setTimeout(warmNext,400));
-function loadItem(it){
+function loadItem(it){window.REL=null;
   curId=it.id;au.src=urlOf(it);au.playbackRate=+$('spd').value;
   $('ptitle').textContent=it.name+(it.sub?' – '+it.sub:'');
   $('pimg').style.background=artBg(it.name);$('player').hidden=false;$('note').value=it.notes||'';
@@ -2912,7 +2912,7 @@ function rcInit(){
 /* ===== הנגן נשאר פתוח: שומרים איזה שיר פתוח ובאיזו נקודה, ואחרי רענון או אחרי שהטלפון סגר את האפליקציה
    הנגן נפתח שוב על אותו שיר ואותה נקודה (בהשהיה) ===== */
 function plSave(){try{if(remote)return;if(!curId){localStorage.removeItem('plState');return}
-  localStorage.setItem('plState',JSON.stringify({id:curId,q:curQ||null,t:NTD.get.call(au)||0,at:Date.now()}))}catch(e){}}
+  localStorage.setItem('plState',JSON.stringify({id:curId,q:curQ||null,t:(window.REL?REL.t:NTD.get.call(au))||0,at:Date.now()}))}catch(e){}}
 setInterval(plSave,2000);/* parked: the song's own point, not the silence */['pause','seeked','loadedmetadata'].forEach(ev=>au.addEventListener(ev,plSave));
 addEventListener('pagehide',plSave);document.addEventListener('visibilitychange',()=>{if(document.hidden)plSave()});
 {let st=null;try{st=JSON.parse(localStorage.getItem('plState')||'null')}catch(e){}
@@ -2930,14 +2930,25 @@ function msMeta(title,artist){if(!MS)return;try{const it=cur();if(!it||remote){M
    (כשהאפליקציה טיפלה בהם בעצמה, אחרי עצירה ארוכה הטלפון לא הספיק להעיר אותה, והעביר את ההפעלה לאפל מיוזיק.)
    האפליקציה רק נותנת את שם השיר, ואת "הבא" ו"הקודם" */
 function msPos(){}
+/* עצירה ארוכה כשהטלפון נעול: באייפון, אחרי כ-10 שניות של עצירה הנגן במסך הנעול כבר לא עובד ("הפעלה" עוברת לאפל מיוזיק).
+   לכן אחרי כמה שניות של עצירה מורידים את הנגן מהמסך הנעול. השיר מחכה באפליקציה באותה נקודה */
+window.REL=null;let relT=0;
+function relNow(){relT=0;if(window.REL||!curId||remote||!document.hidden||gapT||!NPD.get.call(au)||(typeof ctlOn!=='undefined'&&ctlOn))return;
+  try{window.REL={id:curId,t:NTD.get.call(au)||0,d:NDD.get.call(au)||0};plSave();if(MS)MS.metadata=null;au.removeAttribute('src');au.load()}catch(e){window.REL=null}}
+function relBack(){clearTimeout(relT);relT=0;const R=window.REL;if(!R)return;const it=items.find(i=>i.id===R.id);if(!it||curId!==R.id){window.REL=null;return}
+  au.src=urlOf(it);au.addEventListener('loadedmetadata',()=>{if(window.REL!==R)return;window.REL=null;try{NTD.set.call(au,R.t)}catch(e){}try{msMeta();paint()}catch(e){}},{once:true});
+  setTimeout(()=>{if(window.REL===R)window.REL=null},8000)}
+au.addEventListener('pause',()=>{if(document.hidden&&!au.ended&&!relT)relT=setTimeout(relNow,6000)});
+au.addEventListener('play',()=>{clearTimeout(relT);relT=0});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(curId&&NPD.get.call(au)&&!relT&&!window.REL)relT=setTimeout(relNow,6000)}else relBack()});
 au.addEventListener('play',()=>{/* "הפעלה" בזמן הפסקה בין שירים בתור: מתחילים את השיר הבא */if(gapT&&window.gapGo&&!remote){const g=window.gapGo;g()}});
 if(MS){const H=(a,f)=>{try{MS.setActionHandler(a,f)}catch(e){}};
   ['play','pause','stop','seekto','seekbackward','seekforward'].forEach(a=>H(a,null));
   H('nexttrack',()=>$('next').click());H('previoustrack',()=>$('prev').click());
   ['play','loadedmetadata','durationchange'].forEach(ev=>au.addEventListener(ev,()=>msMeta()))}
-const APP_VER=193;
+const APP_VER=194;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={193:['אייפון: האפליקציה מסמנת את עצמה כנגן מוזיקה, כדי שהמסך הנעול יישאר שלה גם אחרי עצירה'],192:['אייפון: הפעלה מהמסך הנעול אחרי עצירה מחזירה גם את הצליל (אחרי שינוי עוצמה מהאפליקציה)'],191:['הפעלה ועצירה במסך הנעול מטופלות ע"י הטלפון עצמו, כמו בכל נגן: גם אחרי עצירה ארוכה','פס ההתקדמות מראה את הנקודה שבה עצרת'],190:['הנגן במסך הנעול עובד כמו נגן רגיל: הפעלה ועצירה משפיעות ישירות על השיר באפליקציה, בלי טריקים'],189:['הנגן במסך הנעול: הכפתורים מראים נכון אם השיר מתנגן או עצור, והנגן לא נעלם כשפותחים את הטלפון','בזמן עצירה במסך הנעול רואים ⏸ ליד שם השיר'],188:['הנגן במסך הנעול נשמר זמן ארוך יותר בזמן עצירה','בהגדרות, למטה: יומן קצר של מה שקרה לנגן במסך הנעול'],187:['הפעלה מהמסך הנעול אחרי עצירה ממשיכה את השיר (ולא עוברת לאפל מיוזיק)'],186:['באייפון: הנגן נשאר במסך הנעול גם כשהמוזיקה עצורה (עד חצי שעה)'],185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={194:['אחרי כמה שניות של עצירה כשהטלפון נעול, הנגן יורד מהמסך הנעול (באייפון הוא כבר לא עובד אחרי עצירה ארוכה). השיר מחכה באפליקציה באותה נקודה'],193:['אייפון: האפליקציה מסמנת את עצמה כנגן מוזיקה, כדי שהמסך הנעול יישאר שלה גם אחרי עצירה'],192:['אייפון: הפעלה מהמסך הנעול אחרי עצירה מחזירה גם את הצליל (אחרי שינוי עוצמה מהאפליקציה)'],191:['הפעלה ועצירה במסך הנעול מטופלות ע"י הטלפון עצמו, כמו בכל נגן: גם אחרי עצירה ארוכה','פס ההתקדמות מראה את הנקודה שבה עצרת'],190:['הנגן במסך הנעול עובד כמו נגן רגיל: הפעלה ועצירה משפיעות ישירות על השיר באפליקציה, בלי טריקים'],189:['הנגן במסך הנעול: הכפתורים מראים נכון אם השיר מתנגן או עצור, והנגן לא נעלם כשפותחים את הטלפון','בזמן עצירה במסך הנעול רואים ⏸ ליד שם השיר'],188:['הנגן במסך הנעול נשמר זמן ארוך יותר בזמן עצירה','בהגדרות, למטה: יומן קצר של מה שקרה לנגן במסך הנעול'],187:['הפעלה מהמסך הנעול אחרי עצירה ממשיכה את השיר (ולא עוברת לאפל מיוזיק)'],186:['באייפון: הנגן נשאר במסך הנעול גם כשהמוזיקה עצורה (עד חצי שעה)'],185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
