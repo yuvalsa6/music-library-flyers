@@ -28,7 +28,7 @@ jobs:
       - name: Collect site files
         run: |
           mkdir _site
-          cp -r index.html cloud.js config.js sw.js manifest.webmanifest icons vendor _site/
+          cp -r index.html cloud.js config.js sw.js manifest.webmanifest icons vendor test _site/
       - uses: actions/upload-pages-artifact@v3
       - id: deployment
         uses: actions/deploy-pages@v4
