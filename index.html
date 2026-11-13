@@ -943,7 +943,7 @@ const au=$('au');
    לא סומכים על דריסת המאפיינים של אלמנט האודיו: באייפון היא לא תמיד נקראת */
 var RCX=null;const NVD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'volume'),NTD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'currentTime'),NDD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'duration'),NPD=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'paused');
 function aT(){if(RCX&&RCX.on())return RCX.pos();if(window.REL)return REL.t;if(window.rsBusyNow)return window.rsBusyNow.t+(window.rsBusyNow.pl&&window.rsBusyNow.playingSince?(Date.now()-window.rsBusyNow.playingSince)/1000:0);return NTD.get.call(au)}
-function aD(){return RCX&&RCX.on()?RCX.dur():window.REL?REL.d:NDD.get.call(au)}
+function aD(){if(RCX&&RCX.on())return RCX.dur();if(window.REL)return REL.d;if(window.PARTIAL){const c=items.find(i=>i.id===PARTIAL.id);if(c&&c.dur>0)return c.dur}return NDD.get.call(au)}
 function aP(){if(RCX&&RCX.on())return RCX.paused();if(window.rsBusyNow)return !window.rsBusyNow.pl;return NPD.get.call(au)}
 function aSeek(t){if(RCX&&RCX.on())return RCX.seek(t);try{if(typeof routeSeek==='function'&&routeSeek(t))return;if(typeof duckSeek==='function')duckSeek()}catch(e){}try{NTD.set.call(au,t)}catch(e){}};au.preservesPitch=true;au.webkitPreservesPitch=true;au.mozPreservesPitch=true;
 const PL='תור תרגילים',INBOX='יבוא שירים';window.wantPlay=null;setInterval(()=>{const b=document.getElementById('pp');if(b)b.classList.toggle('wait',!!curId&&window.wantPlay===curId)},250);
@@ -1053,7 +1053,7 @@ let curQ=null,newQ=null,indQ=null,animUntil=0,doneQ=new Set(),rt=null;const qid=
 function qList(){return plist.map(e=>({e,it:items.find(i=>i.id===qid(e))})).filter(x=>x.it)}
 function qStep(d){const l=qList();let k=l.findIndex(x=>x.e===curQ);if(k<0)k=l.findIndex(x=>x.it.id===curId);return l[k+d]}
 let triedCloud=false;
-au.onerror=()=>{const it=cur();if(!it||!au.getAttribute('src'))return;
+au.onerror=()=>{if(window.PARTIAL&&PARTIAL.id===curId){PARTIAL.failed=true;return}const it=cur();if(!it||!au.getAttribute('src'))return;
   if(it.blob&&it.asset&&!triedCloud&&au.src.startsWith('blob:')){triedCloud=true;au.src=assetUrl(it.asset);au.play().catch(()=>{});return}
   triedCloud=false;
   if((it.ac||it.asset)&&it.blob&&!it._cr&&!remote){it._cr=true;try{URL.revokeObjectURL(urls[it.id])}catch(_){}delete urls[it.id];it.blob=null;try{db&&db.transaction('blobs','readwrite').objectStore('blobs').delete(it.id)}catch(_){}fetchAudio(it,true);return}
@@ -1883,7 +1883,7 @@ function warm(it){try{if(!it||!it.blob||remote)return;const u=urlOf(it);if(warmA
 document.addEventListener('pointerdown',e=>{const r=e.target.closest&&e.target.closest('.item[data-iid]');if(r)warm(items.find(i=>i.id===r.dataset.iid))},{passive:true,capture:true});
 function warmNext(){try{const n=curQ&&qStep(1);if(n)warm(n.it)}catch(e){}}
 au.addEventListener('playing',()=>setTimeout(warmNext,400));
-function loadItem(it){window.REL=null;
+function loadItem(it){window.REL=null;if(window.PARTIAL&&PARTIAL.id!==it.id)window.PARTIAL=null;
   curId=it.id;au.src=urlOf(it);au.playbackRate=+$('spd').value;
   $('ptitle').textContent=it.name+(it.sub?' – '+it.sub:'');
   $('pimg').style.background=artBg(it.name);$('player').hidden=false;$('note').value=it.notes||'';
@@ -1918,7 +1918,7 @@ async function sniffType(bl){try{const u=new Uint8Array(await bl.slice(0,16).arr
   if(u[0]===0x1A&&u[1]===0x45)return 'audio/webm'}catch(e){}return ''}
 /* שיר שעדיין לא ירד למכשיר: לא מנגנים שקט עד שהוא יורד. מורידים אותו מהענן מיד (קודם לכל השאר),
    והוא מתחיל לנגן ברגע שהוא מוכן. לחיצה נוספת בזמן ההמתנה מבטלת */
-const needsDl=it=>!!(it&&!it.blob&&(it.ac||(it.asset&&String(it.asset).indexOf('drive')===0)));
+const needsDl=it=>!!(it&&!it.blob&&!(window.PARTIAL&&PARTIAL.id===it.id)&&(it.ac||(it.asset&&String(it.asset).indexOf('drive')===0)));
 async function startPlay(){
   stopGap();
   {const it0=cur();if(!remote&&needsDl(it0)){if(window.wantPlay===it0.id){window.wantPlay=null;return}window.wantPlay=it0.id;it0._fail=false;if(!dlBusy.has(it0.id))fetchAudio(it0);return}}
@@ -1974,7 +1974,7 @@ let raf=0;const tick=()=>{raf=0;paint();if(!aP())raf=requestAnimationFrame(tick)
 au.addEventListener('play',()=>{if(!raf)raf=requestAnimationFrame(tick)});
 au.addEventListener('durationchange',()=>{if(isFinite(aD())&&aD()>0){$('dur').textContent=fmt(aD());drawMarks();paint()}});
 au.ontimeupdate=()=>{if(!raf)paint()};
-au.onended=()=>{if(curQ){const it0=cur(),n=qStep(1);if(n){advAnim(curQ,n.e);const g=effGap(qgap[curQ]!=null?qgap[curQ]:null);if(g>0){sync();runGap(g,n.it,n.e);return}curQ=n.e;loadItem(n.it);startPlay();return}advAnim(curQ,null);sync();return}const it=cur(),l=visible(),k=l.findIndex(i=>i.id===curId),nx=l[k+1];
+au.onended=()=>{if(window.PARTIAL&&PARTIAL.id===curId){PARTIAL.ended=true;return}if(curQ){const it0=cur(),n=qStep(1);if(n){advAnim(curQ,n.e);const g=effGap(qgap[curQ]!=null?qgap[curQ]:null);if(g>0){sync();runGap(g,n.it,n.e);return}curQ=n.e;loadItem(n.it);startPlay();return}advAnim(curQ,null);sync();return}const it=cur(),l=visible(),k=l.findIndex(i=>i.id===curId),nx=l[k+1];
   if(filter===PL&&nx){const g=it.gap==null?gapDef:it.gap;if(g>0){sync();runGap(g,nx);return}}
   if(!step(1))sync()};
 setInterval(()=>{if(!remote&&loopOn&&loopB!=null&&!aP()&&aT()>=loopB)aSeek(loopA||0)},40);
@@ -2503,6 +2503,14 @@ async function toCloud(it){
 let upRt=0;function retryDl(){if(D&&!upRt&&items.some(i=>i.blob&&!i.ac&&!i.asset&&i.cloud==='retry')){upRt=1;items.forEach(i=>{if(i.cloud==='retry')delete i.cloud});syncUp().finally(()=>{upRt=0})}
   if(!D||syncing)return;let any=false;items.forEach(i=>{if((i.ac||i.asset)&&!i.blob&&i._fail&&Date.now()-(i._failT||0)>45000){i._fail=false;any=true}});if(any)syncDown()}
 setInterval(retryDl,20000);setInterval(()=>{relayOwner()},3000);setInterval(()=>{drvSweep()},15000);let relayWatch=false;function relayWatchInit(){if(relayWatch||!D||!window.HAS_DRIVE)return;relayWatch=true;try{D.collection('req').onSnapshot(()=>{relayOwner()},()=>{})}catch(e){}}setInterval(()=>{if(D&&!upRt){upRt=1;syncUp().finally(()=>{upRt=0})}},300000);window.addEventListener('online',()=>{items.forEach(i=>{if(i._fail)i._failT=0});retryDl()});document.addEventListener('visibilitychange',()=>{if(!document.hidden){drvBlock=0;drvMsg={};retryDl()}});
+/* ניגון תוך כדי הורדה: mp3, wav ו-ogg אפשר להתחיל לנגן מהחלק הראשון של הקובץ. כשכל השיר ירד, הנגן עובר לקובץ המלא
+   באותה נקודה. פורמטים אחרים (כמו m4a) מחכים לקובץ המלא */
+window.PARTIAL=null;
+function streamable(u){if(!u||u.length<12)return false;const s=String.fromCharCode.apply(null,u.subarray(0,12));
+  return s.startsWith('ID3')||(u[0]===0xFF&&(u[1]&0xE0)===0xE0)||(s.startsWith('RIFF')&&s.slice(8,12)==='WAVE')||s.startsWith('OggS')}
+function streamStart(it,parts){try{if(curId!==it.id||window.wantPlay!==it.id||!streamable(parts[0]))return;
+  const P={id:it.id,url:URL.createObjectURL(new Blob([parts[0]],{type:it.mime||MT[it.ext]||'audio/mpeg'}))};window.PARTIAL=P;window.wantPlay=null;
+  au.src=P.url;au.addEventListener('loadedmetadata',()=>{if(window.PARTIAL===P&&curId===it.id)startPlay()},{once:true})}catch(e){window.PARTIAL=null}}
 async function fetchAudio(it,auto){
   if(!D||!(it.ac||it.asset)||it.blob||dlBusy.has(it.id))return;dlBusy.add(it.id);
   try{
@@ -2513,15 +2521,21 @@ async function fetchAudio(it,auto){
 const parts=new Array(it.ac);
     let nx=0,dn=0,err=null;
     const unb=d=>{const bin=atob(d),n=bin.length,u=new Uint8Array(n);for(let i=0;i<n;i++)u[i]=bin.charCodeAt(i);return u};
-    const worker=async()=>{while(!err){const k=nx++;if(k>=it.ac)return;
-      let sn=null;for(let t=0;t<3&&!sn;t++){try{sn=await D.doc('audio/'+it.id+'_'+k).get()}catch(e){if(t===2)throw e}}
+    const one=async k=>{let sn=null;for(let t=0;t<3&&!sn;t++){try{sn=await D.doc('audio/'+it.id+'_'+k).get()}catch(e){if(t===2)throw e}}
       if(!sn||!sn.exists)throw new Error('חסר חלק '+k);parts[k]=chunkU8(sn.data().d);dn++;
-      $('sv').textContent='☁ טוען '+dlTag+'"'+it.name+'" '+Math.round(dn/it.ac*100)+'%'}};
-    await Promise.all(Array.from({length:Math.min(16,it.ac)},()=>worker().catch(e=>{err=err||e})));
+      $('sv').textContent='☁ טוען '+dlTag+'"'+it.name+'" '+Math.round(dn/it.ac*100)+'%'};
+    /* background downloads step aside while a song the user is waiting for downloads */
+    const yieldBg=async()=>{while(auto==='bg'&&(window.wantPlay||window.PARTIAL)&&window.wantPlay!==it.id&&!(window.PARTIAL&&PARTIAL.id===it.id))await new Promise(r=>setTimeout(r,150))};
+    const worker=async()=>{while(!err){await yieldBg();const k=nx++;if(k>=it.ac)return;await one(k)}};
+    /* streaming: the song the user pressed play on starts from its first piece, while the rest downloads */
+    await null;/* let startPlay() mark the song as wanted first */
+    if(window.wantPlay===it.id&&it.ac>1){await one(0);nx=1;streamStart(it,parts)}
+    await Promise.all(Array.from({length:Math.min(16,it.ac-nx)},()=>worker().catch(e=>{err=err||e})));
     if(err)throw err;
     it.blob=new Blob(parts,{type:it.mime||MT[it.ext]||'audio/mpeg'});putBlob(it);
+    const P=window.PARTIAL&&PARTIAL.id===it.id?PARTIAL:null;if(P){window.PARTIAL=null;if(P.ended||P.failed)window.wantPlay=it.id}
     if(curId===it.id){const t=cts.get.call(au),want=window.wantPlay===it.id,pl=auto===true||!aP();if(want)window.wantPlay=null;au.src=urlOf(it);au.addEventListener('loadedmetadata',()=>{rawSeek(t);if(pl)rawPlay().catch(()=>{});else if(want)startPlay()},{once:true})}
-  }catch(e){it._fail=true;it._failT=Date.now();if(window.wantPlay===it.id)window.wantPlay=null;if(auto!=='bg')showErr('טעינת "'+it.name+'" מהענן נכשלה: '+((e&&e.message)||''))}
+  }catch(e){it._fail=true;it._failT=Date.now();if(window.wantPlay===it.id)window.wantPlay=null;if(window.PARTIAL&&PARTIAL.id===it.id){window.PARTIAL=null;try{au.pause()}catch(_){}}if(auto!=='bg')showErr('טעינת "'+it.name+'" מהענן נכשלה: '+((e&&e.message)||''))}
   dlBusy.delete(it.id);stat()}
 const cloudChk=new Set();
 const needMig=i=>!!(A&&i.ac&&!i.asset&&i.dur!==undefined&&(!i.blob||i.blob.size<=ASL));
@@ -2954,9 +2968,9 @@ if(MS){const H=(a,f)=>{try{MS.setActionHandler(a,f)}catch(e){}};
   ['play','pause','stop','seekto','seekbackward','seekforward'].forEach(a=>H(a,null));
   H('nexttrack',()=>$('next').click());H('previoustrack',()=>$('prev').click());
   ['play','loadedmetadata','durationchange'].forEach(ev=>au.addEventListener(ev,()=>msMeta()))}
-const APP_VER=195;
+const APP_VER=196;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={195:['שיר שעדיין לא ירד למכשיר מתנגן ישר מהענן: הוא יורד מיד, וכפתור ההפעלה פועם עד שהוא מתחיל (במקום שקט)'],194:['אחרי כמה שניות של עצירה כשהטלפון נעול, הנגן יורד מהמסך הנעול (באייפון הוא כבר לא עובד אחרי עצירה ארוכה). השיר מחכה באפליקציה באותה נקודה'],193:['אייפון: האפליקציה מסמנת את עצמה כנגן מוזיקה, כדי שהמסך הנעול יישאר שלה גם אחרי עצירה'],192:['אייפון: הפעלה מהמסך הנעול אחרי עצירה מחזירה גם את הצליל (אחרי שינוי עוצמה מהאפליקציה)'],191:['הפעלה ועצירה במסך הנעול מטופלות ע"י הטלפון עצמו, כמו בכל נגן: גם אחרי עצירה ארוכה','פס ההתקדמות מראה את הנקודה שבה עצרת'],190:['הנגן במסך הנעול עובד כמו נגן רגיל: הפעלה ועצירה משפיעות ישירות על השיר באפליקציה, בלי טריקים'],189:['הנגן במסך הנעול: הכפתורים מראים נכון אם השיר מתנגן או עצור, והנגן לא נעלם כשפותחים את הטלפון','בזמן עצירה במסך הנעול רואים ⏸ ליד שם השיר'],188:['הנגן במסך הנעול נשמר זמן ארוך יותר בזמן עצירה','בהגדרות, למטה: יומן קצר של מה שקרה לנגן במסך הנעול'],187:['הפעלה מהמסך הנעול אחרי עצירה ממשיכה את השיר (ולא עוברת לאפל מיוזיק)'],186:['באייפון: הנגן נשאר במסך הנעול גם כשהמוזיקה עצורה (עד חצי שעה)'],185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={196:['שיר שעוד לא ירד למכשיר מתחיל לנגן כמעט מיד, תוך כדי הורדה מהענן (mp3, wav, ogg)'],195:['שיר שעדיין לא ירד למכשיר מתנגן ישר מהענן: הוא יורד מיד, וכפתור ההפעלה פועם עד שהוא מתחיל (במקום שקט)'],194:['אחרי כמה שניות של עצירה כשהטלפון נעול, הנגן יורד מהמסך הנעול (באייפון הוא כבר לא עובד אחרי עצירה ארוכה). השיר מחכה באפליקציה באותה נקודה'],193:['אייפון: האפליקציה מסמנת את עצמה כנגן מוזיקה, כדי שהמסך הנעול יישאר שלה גם אחרי עצירה'],192:['אייפון: הפעלה מהמסך הנעול אחרי עצירה מחזירה גם את הצליל (אחרי שינוי עוצמה מהאפליקציה)'],191:['הפעלה ועצירה במסך הנעול מטופלות ע"י הטלפון עצמו, כמו בכל נגן: גם אחרי עצירה ארוכה','פס ההתקדמות מראה את הנקודה שבה עצרת'],190:['הנגן במסך הנעול עובד כמו נגן רגיל: הפעלה ועצירה משפיעות ישירות על השיר באפליקציה, בלי טריקים'],189:['הנגן במסך הנעול: הכפתורים מראים נכון אם השיר מתנגן או עצור, והנגן לא נעלם כשפותחים את הטלפון','בזמן עצירה במסך הנעול רואים ⏸ ליד שם השיר'],188:['הנגן במסך הנעול נשמר זמן ארוך יותר בזמן עצירה','בהגדרות, למטה: יומן קצר של מה שקרה לנגן במסך הנעול'],187:['הפעלה מהמסך הנעול אחרי עצירה ממשיכה את השיר (ולא עוברת לאפל מיוזיק)'],186:['באייפון: הנגן נשאר במסך הנעול גם כשהמוזיקה עצורה (עד חצי שעה)'],185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
