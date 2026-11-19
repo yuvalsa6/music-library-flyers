@@ -879,6 +879,16 @@ body.selmode #okbar{bottom:calc(env(safe-area-inset-bottom,0px) + 150px)!importa
 .qauto .k small{display:block;font-weight:400;font-size:12.5px;color:var(--muted);margin-top:2px}
 .qauto.off .tgl{background:color-mix(in srgb,var(--ink) 18%,transparent)}
 .qauto.off .tgl i{inset-inline-start:2px}
+/* חסימת מכשירים */
+.sheet .gr button.dng{color:var(--danger)}
+.sheet .admr.isblk .k{opacity:.6}
+.sheet .admr button.admm{color:var(--muted)}
+#blkov{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+#blkov .blkc{max-width:340px;text-align:center}
+#blkov .blki{display:inline-grid;place-items:center;width:64px;height:64px;border-radius:20px;background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--danger);margin-bottom:14px}
+#blkov .blki svg{width:32px;height:32px}
+#blkov h2{margin:0 0 8px;font-size:22px}
+#blkov p{margin:0;color:var(--muted);line-height:1.6}
 /* כפתור הוספת קבוצה: גודל קבוע לאייקון (באייפון הוא נעלם בלי זה) */
 #chips .chip.addc svg{display:block;flex:none;width:22px;height:22px}
 .chip svg{flex:none}
@@ -2961,6 +2971,49 @@ addEventListener('pagehide',plSave);document.addEventListener('visibilitychange'
     const iv=setInterval(()=>{if(curId||remote||Date.now()-t0>30000){clearInterval(iv);return}const it=items.find(i=>i.id===st.id);if(!it)return;clearInterval(iv);
       try{if(st.q&&plist.includes(st.q))curQ=st.q;loadItem(it);const go=()=>{try{if(st.t>0&&curId===it.id&&aP())aSeek(st.t)}catch(e){}};
         au.addEventListener('loadedmetadata',go,{once:true});if(au.readyState>=1)go();render()}catch(e){}},300)}}
+/* ===== חסימת מכשירים: רק מנהל הספרייה רואה את הרשימה ויכול לחסום =====
+   כל מכשיר נרשם ב-seen/<מזהה>. המנהל נשמר ב-adm/owner (הראשון שקובע את עצמו כמנהל, ואחר כך רק מנהל יכול לשנות).
+   מכשיר חסום נרשם ב-blk/<מזהה>: האפליקציה בו נעצרת ומציגה הודעה. כללי הספרייה ב-Firebase (firestore.rules) חוסמים אותו גם בשרת */
+let myUid='',admDoc=null,isAdm=false,amBlocked=false,blkReady=false,admListeners=[];
+function uaShort(){const u=navigator.userAgent;if(/iPad/.test(u)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1))return 'אייפד';if(/iPhone|iPod/.test(u))return 'אייפון';if(/Android/.test(u))return 'אנדרואיד';return 'מחשב'}
+function blkReg(){if(!D||!myUid||amBlocked)return;try{D.doc('seen/'+myUid).set({name:devName||'',t:Date.now(),ua:uaShort()},{merge:true}).catch(()=>{})}catch(e){}}
+function blkInit(){if(blkReady||!D)return;try{myUid=(firebase.auth().currentUser||{}).uid||''}catch(e){}if(!myUid)return;blkReady=true;
+  blkReg();setInterval(blkReg,30*60e3);
+  try{D.doc('adm/owner').onSnapshot(sn=>{admDoc=sn.exists?sn.data():null;isAdm=!!(admDoc&&(admDoc.uids||[]).includes(myUid));admListeners.forEach(f=>{try{f()}catch(e){}})},()=>{})}catch(e){}
+  try{D.doc('blk/'+myUid).onSnapshot(sn=>setBlocked(sn.exists),()=>{})}catch(e){}}
+setInterval(blkInit,1500);
+function setBlocked(b){if(b===amBlocked)return;amBlocked=b;let o=document.getElementById('blkov');
+  if(b){try{au.pause()}catch(e){}try{if(remote)stopControl()}catch(e){}
+    if(!o){o=document.createElement('div');o.id='blkov';o.setAttribute('role','alertdialog');o.setAttribute('aria-labelledby','blkt');
+      o.innerHTML='<div class="blkc"><span class="blki">'+ICX.close+'</span><h2 id="blkt">המכשיר הזה נחסם</h2><p>מנהל הספרייה חסם את הגישה מהמכשיר הזה. אם זו טעות, פנו אליו.</p></div>';document.body.appendChild(o)}}
+  else if(o)o.remove()}
+function agoTxt(t){const m=Math.round((Date.now()-t)/60000);if(m<2)return 'עכשיו';if(m<60)return 'לפני '+m+' דק׳';const h=Math.round(m/60);if(h<24)return 'לפני '+h+' שע׳';const d=Math.round(h/24);return d===1?'אתמול':'לפני '+d+' ימים'}
+/* חלק בהגדרות: מנהל ומכשירים */
+async function admUI(box){if(!box)return;box.innerHTML='';if(!D||!myUid)return;
+  const head=t=>{const g=document.createElement('div');g.className='gl';g.textContent=t;return g};
+  if(!admDoc){const grp=document.createElement('div');grp.className='grp';
+    grp.innerHTML='<div class="gr"><div class="k">מנהל הספרייה<small>עוד לא נקבע. המנהל יכול לראות את המכשירים שמחוברים לספרייה ולחסום מכשירים. רק מכשיר אחד קובע את עצמו כמנהל, ואחריו אף אחד אחר לא יכול</small></div><button class="admgo">אני המנהל</button></div>';
+    const b=grp.querySelector('.admgo');let arm=0;b.onclick=async()=>{if(!arm){arm=1;b.textContent='לחץ שוב לאישור';setTimeout(()=>{arm=0;b.textContent='אני המנהל'},4000);return}
+      b.disabled=true;try{await D.doc('adm/owner').set({uids:[myUid],t:Date.now()});showOk('✓ המכשיר הזה הוא מנהל הספרייה')}catch(e){showErr('לא הצלחתי לקבוע מנהל: '+((e&&e.message)||e))}admUI(box)};
+    box.append(head('ניהול'),grp);return}
+  if(!isAdm)return;
+  const grp=document.createElement('div');grp.className='grp admgrp';grp.innerHTML='<div class="gr"><div class="k" style="color:var(--muted)">טוען מכשירים…</div></div>';box.append(head('מכשירים בספרייה (רק המנהל רואה)'),grp);
+  let seen=[],blk=new Set();try{const[a,b]=await Promise.all([D.collection('seen').get(),D.collection('blk').get()]);seen=a.docs.map(d=>({id:d.id,...(d.data()||{})}));b.docs.forEach(d=>blk.add(d.id))}catch(e){grp.innerHTML='<div class="gr"><div class="k">לא הצלחתי לטעון את המכשירים</div></div>';return}
+  const live=new Set();try{(typeof devs!=='undefined'?[...devs.values()]:[]).forEach(d=>{if(d&&d.uid)live.add(d.uid)})}catch(e){}
+  seen.sort((a,b)=>(a.id===myUid?-1:b.id===myUid?1:0)||(blk.has(a.id)?1:0)-(blk.has(b.id)?1:0)||(b.t||0)-(a.t||0));
+  grp.innerHTML='';const adm=new Set((admDoc&&admDoc.uids)||[]);
+  seen.forEach(d=>{const r=document.createElement('div');r.className='gr admr'+(blk.has(d.id)?' isblk':'');
+    const k=document.createElement('div');k.className='k';k.textContent=(d.name||'מכשיר בלי שם')+(d.id===myUid?' · המכשיר הזה':'');
+    const sm=document.createElement('small');sm.textContent=[d.ua,blk.has(d.id)?'חסום':(d.t?'נראה '+agoTxt(d.t):''),adm.has(d.id)?'מנהל':''].filter(Boolean).join(' · ');k.appendChild(sm);r.appendChild(k);
+    if(d.id!==myUid){
+      if(!blk.has(d.id)){const ab=document.createElement('button');ab.className='admm';ab.textContent=adm.has(d.id)?'הסר מנהל':'הפוך למנהל';
+        ab.onclick=async()=>{ab.disabled=true;try{const u=new Set(adm);adm.has(d.id)?u.delete(d.id):u.add(d.id);await D.doc('adm/owner').set({uids:[...u],t:Date.now()})}catch(e){showErr('השינוי נכשל: '+((e&&e.message)||e))}admUI(box)};r.appendChild(ab)}
+      const bb=document.createElement('button');const isB=blk.has(d.id);bb.className=isB?'':'dng';bb.textContent=isB?'בטל חסימה':'חסום';let arm=0;
+      bb.onclick=async()=>{if(!isB&&!arm){arm=1;bb.textContent='לחץ שוב לחסימה';setTimeout(()=>{if(arm){arm=0;bb.textContent='חסום'}},4000);return}
+        bb.disabled=true;try{if(isB)await D.doc('blk/'+d.id).delete();else{await D.doc('blk/'+d.id).set({name:d.name||'',t:Date.now()});if(adm.has(d.id)){const u=new Set(adm);u.delete(d.id);await D.doc('adm/owner').set({uids:[...u],t:Date.now()})}}
+          showOk(isB?'✓ החסימה בוטלה':'✓ "'+(d.name||'המכשיר')+'" נחסם')}catch(e){showErr('הפעולה נכשלה: '+((e&&e.message)||e))}admUI(box)};r.appendChild(bb)}
+    grp.appendChild(r)});
+  if(seen.length<2){const e=document.createElement('div');e.className='gr';e.innerHTML='<div class="k" style="color:var(--muted)">מכשירים אחרים יופיעו כאן אחרי שייפתחו את האפליקציה</div>';grp.appendChild(e)}}
 /* ===== נגן ברקע ובמסך הנעול: שם המוזיקה, הפעלה/עצירה, הבא/הקודם וקפיצות בשיר ===== */
 const MS=('mediaSession' in navigator)?navigator.mediaSession:null;
 function msMeta(title,artist){if(!MS)return;try{const it=cur();if(!it||remote){MS.metadata=null;return}
@@ -2987,9 +3040,9 @@ if(MS){const H=(a,f)=>{try{MS.setActionHandler(a,f)}catch(e){}};
   ['play','pause','stop','seekto','seekbackward','seekforward'].forEach(a=>H(a,null));
   H('nexttrack',()=>$('next').click());H('previoustrack',()=>$('prev').click());
   ['play','loadedmetadata','durationchange'].forEach(ev=>au.addEventListener(ev,()=>msMeta()))}
-const APP_VER=199;
+const APP_VER=200;
 /* מה חדש בכל גרסה (מוצג פעם אחת אחרי עדכון) */
-const CHANGES={199:['בתור: מתג "הפעלה אוטומטית". כבוי: אחרי כל תרגיל הנגן עוצר, והתרגיל הבא מחכה ללחיצה'],198:['בתוך תיקייה: "הוספת מוזיקות" ← "משיכה מהיבוא". המוזיקות מהיבוא ששמן מתאים לתיקייה מופיעות למעלה ומסומנות, ובוחרים מה למשוך'],197:['מכשיר שנשלט ממכשיר אחר: המסך שלו נשאר דלוק כל זמן השליטה, גם כשהמוזיקה עצורה'],196:['שיר שעוד לא ירד למכשיר מתחיל לנגן כמעט מיד, תוך כדי הורדה מהענן (mp3, wav, ogg)'],195:['שיר שעדיין לא ירד למכשיר מתנגן ישר מהענן: הוא יורד מיד, וכפתור ההפעלה פועם עד שהוא מתחיל (במקום שקט)'],194:['אחרי כמה שניות של עצירה כשהטלפון נעול, הנגן יורד מהמסך הנעול (באייפון הוא כבר לא עובד אחרי עצירה ארוכה). השיר מחכה באפליקציה באותה נקודה'],193:['אייפון: האפליקציה מסמנת את עצמה כנגן מוזיקה, כדי שהמסך הנעול יישאר שלה גם אחרי עצירה'],192:['אייפון: הפעלה מהמסך הנעול אחרי עצירה מחזירה גם את הצליל (אחרי שינוי עוצמה מהאפליקציה)'],191:['הפעלה ועצירה במסך הנעול מטופלות ע"י הטלפון עצמו, כמו בכל נגן: גם אחרי עצירה ארוכה','פס ההתקדמות מראה את הנקודה שבה עצרת'],190:['הנגן במסך הנעול עובד כמו נגן רגיל: הפעלה ועצירה משפיעות ישירות על השיר באפליקציה, בלי טריקים'],189:['הנגן במסך הנעול: הכפתורים מראים נכון אם השיר מתנגן או עצור, והנגן לא נעלם כשפותחים את הטלפון','בזמן עצירה במסך הנעול רואים ⏸ ליד שם השיר'],188:['הנגן במסך הנעול נשמר זמן ארוך יותר בזמן עצירה','בהגדרות, למטה: יומן קצר של מה שקרה לנגן במסך הנעול'],187:['הפעלה מהמסך הנעול אחרי עצירה ממשיכה את השיר (ולא עוברת לאפל מיוזיק)'],186:['באייפון: הנגן נשאר במסך הנעול גם כשהמוזיקה עצורה (עד חצי שעה)'],185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
+const CHANGES={200:['בהגדרות: מנהל הספרייה רואה את המכשירים שמחוברים לספרייה ויכול לחסום מכשיר'],199:['בתור: מתג "הפעלה אוטומטית". כבוי: אחרי כל תרגיל הנגן עוצר, והתרגיל הבא מחכה ללחיצה'],198:['בתוך תיקייה: "הוספת מוזיקות" ← "משיכה מהיבוא". המוזיקות מהיבוא ששמן מתאים לתיקייה מופיעות למעלה ומסומנות, ובוחרים מה למשוך'],197:['מכשיר שנשלט ממכשיר אחר: המסך שלו נשאר דלוק כל זמן השליטה, גם כשהמוזיקה עצורה'],196:['שיר שעוד לא ירד למכשיר מתחיל לנגן כמעט מיד, תוך כדי הורדה מהענן (mp3, wav, ogg)'],195:['שיר שעדיין לא ירד למכשיר מתנגן ישר מהענן: הוא יורד מיד, וכפתור ההפעלה פועם עד שהוא מתחיל (במקום שקט)'],194:['אחרי כמה שניות של עצירה כשהטלפון נעול, הנגן יורד מהמסך הנעול (באייפון הוא כבר לא עובד אחרי עצירה ארוכה). השיר מחכה באפליקציה באותה נקודה'],193:['אייפון: האפליקציה מסמנת את עצמה כנגן מוזיקה, כדי שהמסך הנעול יישאר שלה גם אחרי עצירה'],192:['אייפון: הפעלה מהמסך הנעול אחרי עצירה מחזירה גם את הצליל (אחרי שינוי עוצמה מהאפליקציה)'],191:['הפעלה ועצירה במסך הנעול מטופלות ע"י הטלפון עצמו, כמו בכל נגן: גם אחרי עצירה ארוכה','פס ההתקדמות מראה את הנקודה שבה עצרת'],190:['הנגן במסך הנעול עובד כמו נגן רגיל: הפעלה ועצירה משפיעות ישירות על השיר באפליקציה, בלי טריקים'],189:['הנגן במסך הנעול: הכפתורים מראים נכון אם השיר מתנגן או עצור, והנגן לא נעלם כשפותחים את הטלפון','בזמן עצירה במסך הנעול רואים ⏸ ליד שם השיר'],188:['הנגן במסך הנעול נשמר זמן ארוך יותר בזמן עצירה','בהגדרות, למטה: יומן קצר של מה שקרה לנגן במסך הנעול'],187:['הפעלה מהמסך הנעול אחרי עצירה ממשיכה את השיר (ולא עוברת לאפל מיוזיק)'],186:['באייפון: הנגן נשאר במסך הנעול גם כשהמוזיקה עצורה (עד חצי שעה)'],185:['הנגן לא נסגר יותר כשיוצאים מהאפליקציה: חוזרים לאותו שיר ולאותה נקודה','עדכון גרסה לא קורה יותר באמצע, כשהאפליקציה ברקע'],184:['הפעלה מהמסך הנעול מחזירה את המוזיקה לנגן מיד (בלי ספירה לאחור)'],183:['המוזיקה ממשיכה גם כשיוצאים מהאפליקציה או נועלים את הטלפון','במסך הנעול רואים את שם המוזיקה, ואפשר לעצור, להפעיל, לעבור לבא ולקפוץ בשיר','הפסקה בין שירים בתור נמשכת בזמן גם כשהטלפון נעול'],182:['בהוספת מוזיקה חדשה נפתח חלון לשינוי השם','אם השם מתאים לתיקייה קיימת (למשל של צוות), מוצע לצרף אליה'],181:['בזמן העלאה או הורדה של מוזיקות המסך נשאר דלוק, ולמעלה מופיע כמה נשאר','אם האפליקציה נסגרה באמצע העלאה, היא ממשיכה לבד בפתיחה הבאה'],180:['הבר בנגן זז חלק, בלי קפיצות בין שניות','בזמן גרירת הבר יש שקט, והשיר ממשיך מהנקודה שעזבת'],179:['עוצמה מ-10% עד 130%: מעל 100% זו הגברה, עם מגביל שמונע צליל שבור','באנדרואיד מערכת השמע (האיטית יותר) נכנסת לפעולה רק מעל 100%'],178:['כשחוזרים לשלוט במכשיר, העוצמה חוזרת לבד לעוצמה האחרונה שהגדרת לו מרחוק'],177:['העוצמה שהגדרת מרחוק באייפון נשארת גם כשהטלפון ששולט נעול או מנותק'],176:['אייפון: מצב איטי רק בזמן שליטה מרחוק. העוצמה שהגדרת מרחוק נשארת עד שמפסיקים את השליטה, ואז חוזרת לכפתורי הצד','הוסר הכפתור "תגובה מיידית"'],175:['בנגן: פס עוצמה למכשיר עצמו (גם אחרי שינוי מרחוק)','הבר לא קופץ בזמן קפיצה בשיר באייפון'],174:['קפיצה בשיר באייפון אחרי שינוי עוצמה: לא שומעים יותר כמה שניות מהנקודה הקודמת'],173:['בהגדרות: "השאר את המסך דלוק" ו"בדיקת עדכון"'],172:['קפיצה בשיר אחרי שינוי עוצמה מרחוק: הבר לא קופץ אחורה, ולא שומעים את הנקודה הישנה','הודעה כזו אחרי כל עדכון'],
   171:['הבר האדום זז מיד עם האצבע, והקפיצה בשיר מהירה יותר'],
   170:['שינוי עוצמה מרחוק עובד באייפון'],
   169:['שורת אבחון לעוצמה בשליטה מרחוק'],
@@ -3030,6 +3083,7 @@ setTimeout(()=>{try{whatsNew()}catch(e){}},0);
         (code?'<div class="gr"><div class="k">הקוד</div><span class="v" id="cv">'+masked+'</span><button id="cshow">הצג</button></div>'+
           '<div class="gr"><div class="k">קישור הצטרפות למאמנים</div><button id="clink">העתק קישור</button></div>':'')+
         '<div class="gr"><div class="k">'+(code?'החלפת ספרייה':'הזנת קוד ספרייה')+'</div><button id="cchg">'+(code?'החלף קוד':'הזן קוד')+'</button></div></div>':'')+
+      '<div id="admsec"></div>'+
       '<div class="gl">מסך ועדכונים</div><div class="grp"><button class="gr gtg" id="awk" role="switch"><div class="k">השאר את המסך דלוק<small>כל עוד האפליקציה פתוחה, גם כשלא מתנגנת מוזיקה</small></div><span class="tgl"><i></i></span></button>'+
         '<div class="gr"><div class="k">גרסה '+APP_VER+'<small id="updst"></small></div><button id="updbtn">בדיקת עדכון</button></div></div>'+
       '<div class="ver">ספריית שמע לאימונים · גרסה '+APP_VER+'</div></div>';
@@ -3045,6 +3099,7 @@ setTimeout(()=>{try{whatsNew()}catch(e){}},0);
       if(!('wakeLock' in navigator)){aw.disabled=true;aw.querySelector('small').textContent='המכשיר או הדפדפן הזה לא מאפשרים להשאיר את המסך דלוק'}
       aw.onclick=()=>{keepAwake=!keepAwake;try{localStorage.setItem('keepAwake',keepAwake?'1':'0')}catch(e){}upd();wakeSync()};
             const ub=o.querySelector('#updbtn'),us=o.querySelector('#updst');ub.onclick=()=>{ub.disabled=true;checkUpdate(t=>{us.textContent=t}).finally(()=>{ub.disabled=false})}}
+    {const ab=o.querySelector('#admsec');try{blkReg();admUI(ab);const f=()=>{if(!ab.isConnected){admListeners=admListeners.filter(x=>x!==f);return}admUI(ab)};admListeners.push(f)}catch(e){}}
     const cc=o.querySelector('#cchg');if(cc)cc.onclick=()=>{close();setTimeout(()=>window.libCodeDialog&&libCodeDialog(),220)};
   }
   pill.onclick=sheet;$('setbtn').onclick=sheet;
