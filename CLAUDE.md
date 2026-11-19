@@ -25,7 +25,8 @@ instructions for GitHub/Firebase screens, and show previews before shipping visu
 - `firestore.rules`: only `libs/{code}/{coll}/{doc}` with code length >= 14 is readable/writable.
   Device blocking (v200): `seen/<auth uid>` device registry, `adm/owner {uids}` = library managers (first claim
   wins, then only managers change it), `blk/<auth uid>` = blocked devices (managers only). Rules deny a blocked
-  device everything except `audio` reads (saves one read per piece) and its own `blk` doc. The rules must be pasted
+  device everything except `audio` reads (saves one read per piece) and its own `blk` doc. A blocked device
+  (v201) only loses the cloud library: D=null, library songs removed from it, the app keeps working locally. The rules must be pasted
   into Firebase console → Firestore → Rules by the owner whenever this file changes.
 - `.github/workflows/pages.yml`: deploys to GitHub Pages on push to `main`.
 - `.claude/skills/`: `frontend-design` and `ui-ux-pro-max` (search tool:
