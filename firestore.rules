@@ -5,7 +5,28 @@ service cloud.firestore {
     // There is no rule for the libs collection itself, so nobody can list the
     // codes: you can only reach a library if you already know its code.
     match /libs/{code}/{coll}/{doc} {
-      allow read, write: if request.auth != null && code.size() >= 14;
+      function signed() { return request.auth != null && code.size() >= 14; }
+      function me() { return request.auth.uid; }
+      // A device blocked by the library manager (libs/<code>/blk/<device id>).
+      function blocked() { return exists(/databases/$(database)/documents/libs/$(code)/blk/$(request.auth.uid)); }
+      function hasManager() { return exists(/databases/$(database)/documents/libs/$(code)/adm/owner); }
+      function isManager() { return hasManager() && me() in get(/databases/$(database)/documents/libs/$(code)/adm/owner).data.uids; }
+
+      // Reading. Music pieces (audio) skip the block check, to save one read per piece;
+      // a blocked device cannot read the song list, so it cannot find them.
+      // A blocked device may read its own block record, to show "this device is blocked".
+      allow read: if signed() && (coll == 'audio' || (coll == 'blk' && doc == me()) || !blocked());
+
+      // Writing: everything except the manager and block lists, for devices that are not blocked.
+      allow write: if signed() && coll != 'adm' && coll != 'blk' && !blocked();
+
+      // The manager: the first device to claim it creates adm/owner with itself;
+      // after that only a manager can change the list.
+      allow create: if signed() && coll == 'adm' && doc == 'owner' && request.resource.data.uids == [me()];
+      allow update: if signed() && coll == 'adm' && doc == 'owner' && me() in resource.data.uids && !blocked();
+
+      // Blocking and unblocking: managers only.
+      allow write: if signed() && coll == 'blk' && isManager();
     }
   }
 }
